@@ -16,5 +16,5 @@ executable('servicemaster',
   install_dir : get_option('prefix'))
 
 # Install the man page
-man1 = 'servicemaster.1.gz'
+man1 = 'servicemaster.1'
 install_man(man1, install_dir : '/usr/share/man/man1')
