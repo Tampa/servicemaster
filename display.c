@@ -156,6 +156,7 @@ static void display_text_and_lines(Bus *bus)
 
     /* Sets the type count */
     strncpy(tmptype, service_string_type(mode), 16);
+    tmptype[sizeof(tmptype) - 1] = '\0';
     tmptype[0] = toupper(tmptype[0]);
     mvprintw(2, x, "%s: %d", tmptype, bus->total_types[mode]);
 
@@ -186,6 +187,7 @@ static void display_text_and_lines(Bus *bus)
  */
 int display_key_pressed(sd_event_source *s, int fd, uint32_t revents, void *data)
 {
+    (void)fd;
     int c;
     char *status = NULL;
     int max_services = 0;

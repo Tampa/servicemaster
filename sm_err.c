@@ -4,6 +4,7 @@
 #include <curses.h>
 #include "display.h"
 #include "sm_err.h"
+#define __STDC_WANT_LIB_EXT2__ 1
 
 /* Do not stack errors, one error overwites the next */
 static char *errbuf = NULL;
@@ -13,7 +14,7 @@ static void sm_err_print_err(const char *errstr)
     if (curscr)
         endwin();
 
-    fprintf(stderr, errstr);
+    fprintf(stderr, "%s", errstr);
     fprintf(stderr, "\n");
     return;
 }
