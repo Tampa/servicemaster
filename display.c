@@ -5,6 +5,7 @@
 #include "sm_err.h"
 #include "service.h"
 #include "display.h"
+#include <sys/ioctl.h>
 
 static uint64_t start_time = 0;
 static enum service_type mode = SERVICE;
@@ -120,6 +121,15 @@ static void display_text_and_lines(Bus *bus)
     int x = D_XLOAD / 2 - 10;
     int maxx, maxy;
     char tmptype[16] = {0};
+    int headerrow = 3;
+
+    struct winsize size;
+    ioctl(STDOUT_FILENO, TIOCGWINSZ, &size);
+
+    if (size.ws_col < (strlen(D_FUNCTIONS) + strlen(D_SERVICE_TYPES) + 2)) {
+        headerrow++;
+    }
+
     getmaxyx(stdscr, maxy, maxx);
 
     attroff(COLOR_PAIR(9));
@@ -128,28 +138,33 @@ static void display_text_and_lines(Bus *bus)
     attron(A_BOLD);
     attron(COLOR_PAIR(0));
     mvaddstr(1, 1, D_HEADLINE);
-    attroff(COLOR_PAIR(8));
+    mvaddstr(1, strlen(D_HEADLINE) + 1 + ((size.ws_col - strlen(D_HEADLINE) - strlen(D_QUIT) - strlen(D_NAVIGATION) - 2)/2), D_NAVIGATION);
+    mvaddstr(1, size.ws_col - strlen(D_QUIT) - 1, D_QUIT);
 
     attron(COLOR_PAIR(9));
-    mvaddstr(1, strlen(D_HEADLINE) + 2, D_FUNCTIONS);
+    mvaddstr(2, 1, D_FUNCTIONS);
     attroff(COLOR_PAIR(9));
 
     attron(COLOR_PAIR(10));
-    mvaddstr(1, strlen(D_HEADLINE) + strlen(D_FUNCTIONS) + 3, D_SERVICE_TYPES);
+    if (size.ws_col < (strlen(D_FUNCTIONS) + strlen(D_SERVICE_TYPES) + 2)) {
+        mvaddstr(3, 1, D_SERVICE_TYPES);
+    } else {
+        mvaddstr(2, size.ws_col - strlen(D_SERVICE_TYPES) - 1, D_SERVICE_TYPES);
+    }
     attroff(COLOR_PAIR(10));
 
-    mvprintw(2, D_XLOAD - 10, "Pos.:%3d", position + index_start);
-    mvprintw(2, 1, "UNIT:");
+    mvprintw(headerrow, D_XLOAD - 10, "Pos.:%3d", position + index_start);
+    mvprintw(headerrow, 1, "UNIT:");
 
     attron(COLOR_PAIR(4));
-    mvprintw(2, 7, "(%s)", type ? "USER" : "SYSTEM");
+    mvprintw(headerrow, 7, "(%s)", type ? "USER" : "SYSTEM");
     attroff(COLOR_PAIR(4));
 
-    mvprintw(2, 16, "Space: User/System");
-    mvprintw(2, D_XLOAD, "STATE:");
-    mvprintw(2, D_XACTIVE, "ACTIVE:");
-    mvprintw(2, D_XSUB, "SUB:");
-    mvprintw(2, D_XDESCRIPTION, "DESCRIPTION: | Left/Right: Modus | Up/Down: Select | Return: Show status");
+    mvprintw(headerrow, 16, "Space: User/System");
+    mvprintw(headerrow, D_XLOAD, "STATE:");
+    mvprintw(headerrow, D_XACTIVE, "ACTIVE:");
+    mvprintw(headerrow, D_XSUB, "SUB:");
+    mvprintw(headerrow, D_XDESCRIPTION, "DESCRIPTION:");
 
     attron(COLOR_PAIR(4));
     attron(A_UNDERLINE);
@@ -158,16 +173,16 @@ static void display_text_and_lines(Bus *bus)
     strncpy(tmptype, service_string_type(mode), 16);
     tmptype[sizeof(tmptype) - 1] = '\0';
     tmptype[0] = toupper(tmptype[0]);
-    mvprintw(2, x, "%s: %d", tmptype, bus->total_types[mode]);
+    mvprintw(headerrow, x, "%s: %d", tmptype, bus->total_types[mode]);
 
     attroff(COLOR_PAIR(4));
     attroff(A_UNDERLINE);
     attroff(A_BOLD);
-    mvhline(3, 1, ACS_HLINE, maxx - 2);
-    mvvline(2, D_XLOAD - 1, ACS_VLINE, maxy - 3);
-    mvvline(2, D_XACTIVE -1, ACS_VLINE, maxy - 3);
-    mvvline(2, D_XSUB -1, ACS_VLINE, maxy - 3);
-    mvvline(2, D_XDESCRIPTION -1, ACS_VLINE, maxy - 3);
+    mvhline(headerrow + 1, 1, ACS_HLINE, maxx - 2);
+    mvvline(headerrow, D_XLOAD - 1, ACS_VLINE, maxy - 3);
+    mvvline(headerrow, D_XACTIVE -1, ACS_VLINE, maxy - 3);
+    mvvline(headerrow, D_XSUB -1, ACS_VLINE, maxy - 3);
+    mvvline(headerrow, D_XDESCRIPTION -1, ACS_VLINE, maxy - 3);
 }
 
 

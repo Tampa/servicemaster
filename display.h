@@ -12,7 +12,9 @@
 #define D_VERSION        "1.4.2"
 #define D_FUNCTIONS      "F1:START F2:STOP F3:RESTART F4:ENABLE F5:DISABLE F6:MASK F7:UNMASK F8:RELOAD"
 #define D_SERVICE_TYPES  "A:ALL D:DEV I:SLICE S:SERVICE O:SOCKET T:TARGET R:TIMER M:MOUNT C:SCOPE N:AMOUNT W:SWAP P:PATH H:SSHOT"
-#define D_HEADLINE       "ServiceMaster "D_VERSION"|Q/ESC:Quit"
+#define D_HEADLINE       "ServiceMaster "D_VERSION""
+#define D_NAVIGATION     "Left/Right: Modus | Up/Down: Select | Return: Show status"
+#define D_QUIT           "Q/ESC:Quit"
 
 #define D_XLOAD 104
 #define D_XACTIVE 114
