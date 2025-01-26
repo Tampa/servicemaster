@@ -223,6 +223,48 @@ int display_key_pressed(sd_event_source *s, int fd, uint32_t revents, void *data
         max_services = bus->total_types[mode];
 
         switch(tolower(c)) {
+            case KEY_ESC:
+                ;
+                char seq[10] = {0};
+                int i = 0, c;
+
+                while ((c = getch()) != ERR && i < 9) {
+                    seq[i++] = c;
+                    if (c == '~') break;
+                }
+                seq[i] = '\0';
+
+                if (strcmp(seq, "[11~") == 0) {
+                        D_OP(bus, svc, START, "Start");
+                } else if (strcmp(seq, "[12~") == 0) {
+                        D_OP(bus, svc, STOP, "Stop");
+                } else if (strcmp(seq, "[13~") == 0) {
+                        D_OP(bus, svc, RESTART, "Restart");
+                } else if (strcmp(seq, "[14~") == 0) {
+                        D_OP(bus, svc, ENABLE, "Enable");
+                        update_state = true;
+                } else {
+                    if ((service_now() - start_time) < D_ESCOFF_MS) 
+                        break;
+                    endwin();
+                    exit(EXIT_SUCCESS);
+                }
+                break;
+            case KEY_F(5):
+                D_OP(bus, svc, DISABLE, "Disable");
+                update_state = true;
+                break;
+            case KEY_F(6):
+                D_OP(bus, svc, MASK, "Mask");
+                update_state = true;
+                break;
+            case KEY_F(7):
+                D_OP(bus, svc, UNMASK, "Unmask");
+                update_state = true;
+                break;
+            case KEY_F(8):
+                D_OP(bus, svc, RELOAD, "Reload");
+                break;
             case KEY_UP:
                 if (position > 0)
                     position--;
@@ -291,42 +333,6 @@ int display_key_pressed(sd_event_source *s, int fd, uint32_t revents, void *data
                 free(status);
                 break;
 
-            case KEY_F(1):
-                D_OP(bus, svc, START, "Start");
-                break;
-
-            case KEY_F(2):
-                D_OP(bus, svc, STOP, "Stop");
-                break;
-
-            case KEY_F(3):
-                D_OP(bus, svc, RESTART, "Restart");
-                break;
-
-            case KEY_F(4):
-                D_OP(bus, svc, ENABLE, "Enable");
-                update_state = true;
-                break;
-
-            case KEY_F(5):
-                D_OP(bus, svc, DISABLE, "Disable");
-                update_state = true;
-                break;
-
-            case KEY_F(6):
-                D_OP(bus, svc, MASK, "Mask");
-                update_state = true;
-                break;
-
-            case KEY_F(7):
-                D_OP(bus, svc, UNMASK, "Unmask");
-                update_state = true;
-                break;
-
-            case KEY_F(8):
-                D_OP(bus, svc, RELOAD, "Reload");
-                break;
-
             case 'a':
                 D_MODE(ALL);
                 break;
@@ -378,12 +384,6 @@ int display_key_pressed(sd_event_source *s, int fd, uint32_t revents, void *data
             case 'h':
                 D_MODE(SNAPSHOT);
                 break;
-
-            case KEY_ESC:
-                if ((service_now() - start_time) < D_ESCOFF_MS) 
-                    break;
-                endwin();
-                exit(EXIT_SUCCESS);
 
             case 'q':
                 endwin();
