@@ -250,6 +250,19 @@ int display_key_pressed(sd_event_source *s, int fd, uint32_t revents, void *data
                     exit(EXIT_SUCCESS);
                 }
                 break;
+            case KEY_F(1):
+                D_OP(bus, svc, START, "Start");
+                break;
+            case KEY_F(2):
+                D_OP(bus, svc, STOP, "Stop");
+                break;
+            case KEY_F(3):
+                D_OP(bus, svc, RESTART, "Restart");
+                break;
+            case KEY_F(4):
+                D_OP(bus, svc, ENABLE, "Enable");
+                update_state = true;
+                break;
             case KEY_F(5):
                 D_OP(bus, svc, DISABLE, "Disable");
                 update_state = true;
