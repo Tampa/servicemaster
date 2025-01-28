@@ -16,7 +16,6 @@ static uid_t euid = INT32_MAX;
 
 extern const char **service_str_types;
 
-
 /**
  * Prints the service information for the specified index and row.
  *
@@ -33,17 +32,20 @@ extern const char **service_str_types;
  */
 static int display_row(Service *svc, int row)
 {
+    int spc = 5;
 
     char short_unit[D_XLOAD - 2];
     char short_unit_file_state[10];
     char *short_description;
     size_t maxx_description = getmaxx(stdscr) - D_XDESCRIPTION - 1;
 
-    if(position == row) {
+    if (position == row)
+    {
         attron(COLOR_PAIR(8));
         attron(A_BOLD);
     }
-    else {
+    else
+    {
         attroff(COLOR_PAIR(8));
         attroff(A_BOLD);
     }
@@ -52,38 +54,40 @@ static int display_row(Service *svc, int row)
         return 0;
 
     // if the unit name is too long, truncate it and add ...
-    if(strlen(svc->unit) >= D_XLOAD -3) {
+    if (strlen(svc->unit) >= D_XLOAD - 3)
+    {
         strncpy(short_unit, svc->unit, D_XLOAD - 2);
-        mvaddstr(row + 4, 1, short_unit);
-        mvaddstr(row + 4, D_XLOAD - 4, "...");
+        mvaddstr(row + spc, 1, short_unit);
+        mvaddstr(row + spc, D_XLOAD - 4, "...");
     }
     else
-        mvaddstr(row + 4, 1, svc->unit);
+        mvaddstr(row + spc, 1, svc->unit);
 
     // if the state is too long, truncate it (enabled-runtime will be enabled-r)
     if (!svc->unit_file_state || strlen(svc->unit_file_state) == 0)
-        mvprintw(row + 4, D_XLOAD, "%s", svc->load);
+        mvprintw(row + spc, D_XLOAD, "%s", svc->load);
     else if (strlen(svc->unit_file_state) > 9)
     {
         strncpy(short_unit_file_state, svc->unit_file_state, 9);
         short_unit_file_state[9] = '\0';
-        mvaddstr(row + 4, D_XLOAD, short_unit_file_state);
+        mvaddstr(row + spc, D_XLOAD, short_unit_file_state);
     }
     else
-        mvprintw(row + 4, D_XLOAD, "%s", svc->unit_file_state ? svc->unit_file_state : svc->load);
+        mvprintw(row + spc, D_XLOAD, "%s", svc->unit_file_state ? svc->unit_file_state : svc->load);
 
-    mvprintw(row + 4, D_XACTIVE, "%s", svc->active);
-    mvprintw(row + 4, D_XSUB, "%s", svc->sub);
+    mvprintw(row + spc, D_XACTIVE, "%s", svc->active);
+    mvprintw(row + spc, D_XSUB, "%s", svc->sub);
     // if the description is too long, truncate it and add ...
-    if(strlen(svc->description) >= maxx_description) {
-        short_description = alloca(maxx_description+1);
-        memset(short_description, 0, maxx_description+1);
+    if (strlen(svc->description) >= maxx_description)
+    {
+        short_description = alloca(maxx_description + 1);
+        memset(short_description, 0, maxx_description + 1);
         strncpy(short_description, svc->description, maxx_description - 3);
-        mvaddstr(row + 4, D_XDESCRIPTION, short_description);
-        mvaddstr(row + 4, D_XDESCRIPTION + maxx_description - 3, "...");
+        mvaddstr(row + spc, D_XDESCRIPTION, short_description);
+        mvaddstr(row + spc, D_XDESCRIPTION + maxx_description - 3, "...");
     }
     else
-        mvaddstr(row + 4, D_XDESCRIPTION, svc->description);
+        mvaddstr(row + spc, D_XDESCRIPTION, svc->description);
 
     svc->ypos = row + 4;
     return 1;
@@ -98,7 +102,8 @@ static void display_services(Bus *bus)
 
     services_invalidate_ypos(bus);
 
-    while (true) {
+    while (true)
+    {
         svc = service_nth(bus, idx);
         if (!svc)
             break;
@@ -126,7 +131,8 @@ static void display_text_and_lines(Bus *bus)
     struct winsize size;
     ioctl(STDOUT_FILENO, TIOCGWINSZ, &size);
 
-    if (size.ws_col < (strlen(D_FUNCTIONS) + strlen(D_SERVICE_TYPES) + 2)) {
+    if (size.ws_col < (strlen(D_FUNCTIONS) + strlen(D_SERVICE_TYPES) + 2))
+    {
         headerrow++;
     }
 
@@ -138,7 +144,7 @@ static void display_text_and_lines(Bus *bus)
     attron(A_BOLD);
     attron(COLOR_PAIR(0));
     mvaddstr(1, 1, D_HEADLINE);
-    mvaddstr(1, strlen(D_HEADLINE) + 1 + ((size.ws_col - strlen(D_HEADLINE) - strlen(D_QUIT) - strlen(D_NAVIGATION) - 2)/2), D_NAVIGATION);
+    mvaddstr(1, strlen(D_HEADLINE) + 1 + ((size.ws_col - strlen(D_HEADLINE) - strlen(D_QUIT) - strlen(D_NAVIGATION) - 2) / 2), D_NAVIGATION);
     mvaddstr(1, size.ws_col - strlen(D_QUIT) - 1, D_QUIT);
 
     attron(COLOR_PAIR(9));
@@ -146,9 +152,12 @@ static void display_text_and_lines(Bus *bus)
     attroff(COLOR_PAIR(9));
 
     attron(COLOR_PAIR(10));
-    if (size.ws_col < (strlen(D_FUNCTIONS) + strlen(D_SERVICE_TYPES) + 2)) {
+    if (size.ws_col < (strlen(D_FUNCTIONS) + strlen(D_SERVICE_TYPES) + 2))
+    {
         mvaddstr(3, 1, D_SERVICE_TYPES);
-    } else {
+    }
+    else
+    {
         mvaddstr(2, size.ws_col - strlen(D_SERVICE_TYPES) - 1, D_SERVICE_TYPES);
     }
     attroff(COLOR_PAIR(10));
@@ -180,11 +189,10 @@ static void display_text_and_lines(Bus *bus)
     attroff(A_BOLD);
     mvhline(headerrow + 1, 1, ACS_HLINE, maxx - 2);
     mvvline(headerrow, D_XLOAD - 1, ACS_VLINE, maxy - 3);
-    mvvline(headerrow, D_XACTIVE -1, ACS_VLINE, maxy - 3);
-    mvvline(headerrow, D_XSUB -1, ACS_VLINE, maxy - 3);
-    mvvline(headerrow, D_XDESCRIPTION -1, ACS_VLINE, maxy - 3);
+    mvvline(headerrow, D_XACTIVE - 1, ACS_VLINE, maxy - 3);
+    mvvline(headerrow, D_XSUB - 1, ACS_VLINE, maxy - 3);
+    mvvline(headerrow, D_XDESCRIPTION - 1, ACS_VLINE, maxy - 3);
 }
-
 
 /**
  * Handles user input and performs various operations on systemd services.
@@ -212,7 +220,7 @@ int display_key_pressed(sd_event_source *s, int fd, uint32_t revents, void *data
     Service *svc = NULL;
     Bus *bus = (Bus *)data;
 
-    if ((revents & (EPOLLHUP|EPOLLERR|EPOLLRDHUP)) > 0) 
+    if ((revents & (EPOLLHUP | EPOLLERR | EPOLLRDHUP)) > 0)
         sm_err_set("Error handling input: %s\n", strerror(errno));
 
     while ((c = getch()))
@@ -222,211 +230,231 @@ int display_key_pressed(sd_event_source *s, int fd, uint32_t revents, void *data
 
         max_services = bus->total_types[mode];
 
-        switch(tolower(c)) {
-            case KEY_ESC:
-                ;
-                char seq[10] = {0};
-                int i = 0, c;
+        switch (tolower(c))
+        {
+        case KEY_ESC:;
+            char seq[10] = {0};
+            int i = 0, c;
 
-                while ((c = getch()) != ERR && i < 9) {
-                    seq[i++] = c;
-                    if (c == '~') break;
-                }
-                seq[i] = '\0';
+            while ((c = getch()) != ERR && i < 9)
+            {
+                seq[i++] = c;
+                if (c == '~')
+                    break;
+            }
+            seq[i] = '\0';
 
-                if (strcmp(seq, "[11~") == 0) {
-                        D_OP(bus, svc, START, "Start");
-                } else if (strcmp(seq, "[12~") == 0) {
-                        D_OP(bus, svc, STOP, "Stop");
-                } else if (strcmp(seq, "[13~") == 0) {
-                        D_OP(bus, svc, RESTART, "Restart");
-                } else if (strcmp(seq, "[14~") == 0) {
-                        D_OP(bus, svc, ENABLE, "Enable");
-                        update_state = true;
-                } else {
-                    if ((service_now() - start_time) < D_ESCOFF_MS) 
-                        break;
-                    endwin();
-                    exit(EXIT_SUCCESS);
-                }
-                break;
-            case KEY_F(1):
+            if (strcmp(seq, "[11~") == 0)
+            {
                 D_OP(bus, svc, START, "Start");
-                break;
-            case KEY_F(2):
+            }
+            else if (strcmp(seq, "[12~") == 0)
+            {
                 D_OP(bus, svc, STOP, "Stop");
-                break;
-            case KEY_F(3):
+            }
+            else if (strcmp(seq, "[13~") == 0)
+            {
                 D_OP(bus, svc, RESTART, "Restart");
-                break;
-            case KEY_F(4):
+            }
+            else if (strcmp(seq, "[14~") == 0)
+            {
                 D_OP(bus, svc, ENABLE, "Enable");
                 update_state = true;
-                break;
-            case KEY_F(5):
-                D_OP(bus, svc, DISABLE, "Disable");
-                update_state = true;
-                break;
-            case KEY_F(6):
-                D_OP(bus, svc, MASK, "Mask");
-                update_state = true;
-                break;
-            case KEY_F(7):
-                D_OP(bus, svc, UNMASK, "Unmask");
-                update_state = true;
-                break;
-            case KEY_F(8):
-                D_OP(bus, svc, RELOAD, "Reload");
-                break;
-            case KEY_UP:
-                if (position > 0)
-                    position--;
-                else if (index_start > 0) {
-                    index_start--;
-                    erase();
-                }
-                break;
-
-            case KEY_DOWN:
-                if (position < maxy - 6 && index_start + position < max_services - 1)
-                    position++;
-                else if (index_start + position < max_services - 1) {
-                    index_start++;
-                    erase();
-                }
-                break;
-
-            case KEY_PPAGE: // Page Up
-                if (index_start > 0) {
-                    index_start -= page_scroll;
-                    if (index_start < 0)
-                        index_start = 0;
-                    erase();
-                }
-
-                position = 0;
-                break;
-
-            case KEY_NPAGE: // Page Down
-                if (index_start < max_services - page_scroll) {
-                    index_start += page_scroll;
-                    position = maxy - 6;
-                    erase();
-                }
-                break;
-
-            case KEY_LEFT:
-                if(mode > ALL)
-                    D_MODE(mode-1);
-                break;
-
-            case KEY_RIGHT:
-                if(mode < SNAPSHOT)
-                    D_MODE(mode+1);
-                break;
-
-            case KEY_SPACE:
-                if (bus_system_only())
+            }
+            else
+            {
+                if ((service_now() - start_time) < D_ESCOFF_MS)
                     break;
-                type ^= 0x1;
-                bus = bus_currently_displayed();
-                sd_event_source_set_userdata(s, bus);
-                erase();
-                break;
-
-            case KEY_RETURN:
-                svc = service_ypos(bus, position + 4);
-                if (!svc)
-                    break;
-                if(position < 0)
-                    break;
-                status = service_status_info(bus, svc);
-
-                display_status_window(status ? status : "No status information available.", "Status:");
-                free(status);
-                break;
-
-            case 'a':
-                D_MODE(ALL);
-                break;
-
-            case 'd':
-                D_MODE(DEVICE);
-                break;
-
-            case 'i':
-                D_MODE(SLICE);
-                break;
-
-            case 's':
-                D_MODE(SERVICE);
-                break;
-
-            case 'o':
-                D_MODE(SOCKET);
-                break;
-
-            case 't':
-                D_MODE(TARGET);
-                break;
-
-            case 'r':
-                D_MODE(TIMER);
-                break;
-
-            case 'm':
-                D_MODE(MOUNT);
-                break;
-
-            case 'c':
-                D_MODE(SCOPE);
-                break;
-
-            case 'n':
-                D_MODE(AUTOMOUNT);
-                break;
-
-            case 'w':
-                D_MODE(SWAP);
-                break;
-
-            case 'p':
-                D_MODE(PATH);
-                break;
-
-            case 'h':
-                D_MODE(SNAPSHOT);
-                break;
-
-            case 'q':
                 endwin();
                 exit(EXIT_SUCCESS);
+            }
+            break;
+        case KEY_F(1):
+            D_OP(bus, svc, START, "Start");
+            break;
+        case KEY_F(2):
+            D_OP(bus, svc, STOP, "Stop");
+            break;
+        case KEY_F(3):
+            D_OP(bus, svc, RESTART, "Restart");
+            break;
+        case KEY_F(4):
+            D_OP(bus, svc, ENABLE, "Enable");
+            update_state = true;
+            break;
+        case KEY_F(5):
+            D_OP(bus, svc, DISABLE, "Disable");
+            update_state = true;
+            break;
+        case KEY_F(6):
+            D_OP(bus, svc, MASK, "Mask");
+            update_state = true;
+            break;
+        case KEY_F(7):
+            D_OP(bus, svc, UNMASK, "Unmask");
+            update_state = true;
+            break;
+        case KEY_F(8):
+            D_OP(bus, svc, RELOAD, "Reload");
+            break;
+        case KEY_UP:
+            if (position > 0)
+                position--;
+            else if (index_start > 0)
+            {
+                index_start--;
+                erase();
+            }
             break;
 
-            default:
-                continue;
+        case KEY_DOWN:
+            if (position < maxy - 5 && index_start + position < max_services)
+                position++;
+            else if (index_start + position < max_services - 1)
+            {
+                index_start++;
+                erase();
+            }
+            break;
+
+        case KEY_PPAGE: // Page Up
+            if (index_start > 0)
+            {
+                index_start -= page_scroll;
+                if (index_start < 0)
+                    index_start = 0;
+                erase();
+            }
+
+            position = 0;
+            break;
+
+        case KEY_NPAGE: // Page Down
+            if (index_start < max_services - page_scroll)
+            {
+                index_start += page_scroll;
+                position = maxy - 6;
+                erase();
+            }
+            break;
+
+        case KEY_LEFT:
+            if (mode > ALL)
+                D_MODE(mode - 1);
+            break;
+
+        case KEY_RIGHT:
+            if (mode < SNAPSHOT)
+                D_MODE(mode + 1);
+            break;
+
+        case KEY_SPACE:
+            if (bus_system_only())
+                break;
+            type ^= 0x1;
+            bus = bus_currently_displayed();
+            sd_event_source_set_userdata(s, bus);
+            erase();
+            break;
+
+        case KEY_RETURN:
+            svc = service_ypos(bus, position + 4);
+            if (!svc)
+                break;
+            if (position < 0)
+                break;
+            status = service_status_info(bus, svc);
+
+            display_status_window(status ? status : "No status information available.", "Status:");
+            free(status);
+            break;
+
+        case 'a':
+            D_MODE(ALL);
+            break;
+
+        case 'd':
+            D_MODE(DEVICE);
+            break;
+
+        case 'i':
+            D_MODE(SLICE);
+            break;
+
+        case 's':
+            D_MODE(SERVICE);
+            break;
+
+        case 'o':
+            D_MODE(SOCKET);
+            break;
+
+        case 't':
+            D_MODE(TARGET);
+            break;
+
+        case 'r':
+            D_MODE(TIMER);
+            break;
+
+        case 'm':
+            D_MODE(MOUNT);
+            break;
+
+        case 'c':
+            D_MODE(SCOPE);
+            break;
+
+        case 'n':
+            D_MODE(AUTOMOUNT);
+            break;
+
+        case 'w':
+            D_MODE(SWAP);
+            break;
+
+        case 'p':
+            D_MODE(PATH);
+            break;
+
+        case 'h':
+            D_MODE(SNAPSHOT);
+            break;
+
+        case 'q':
+            endwin();
+            exit(EXIT_SUCCESS);
+            break;
+
+        default:
+            continue;
         }
 
         if (update_state)
             bus_update_unit_file_state(bus, svc);
 
         /* redraw any lines we have invalidated */
-        if (update_state) {
+        if (update_state)
+        {
             display_redraw_row(svc);
             svc->changed = 0;
         }
 
-        if(index_start < 0)
+        if (index_start < 0)
             index_start = 0;
 
-        if(position < 0)
+        if (position < 0)
             position = 0;
 
-        if (index_start + position >= max_services) {
-            if (max_services > maxy - 6) {
+        if (index_start + position >= max_services)
+        {
+            if (max_services > maxy - 6)
+            {
                 index_start = max_services - (maxy - 6);
                 position = maxy - 7;
-            } else {
+            }
+            else
+            {
                 index_start = 0;
                 position = max_services - 1;
             }
@@ -437,7 +465,6 @@ int display_key_pressed(sd_event_source *s, int fd, uint32_t revents, void *data
 
     return 0;
 }
-
 
 enum bus_type display_bus_type(void)
 {
@@ -488,7 +515,7 @@ void display_erase(void)
 
 void display_set_bus_type(enum bus_type ty)
 {
-    type = ty; 
+    type = ty;
 }
 
 void display_init(void)
@@ -550,12 +577,13 @@ void display_init(void)
  * @param status The status message to display in the window.
  * @param title The title to display at the top of the window.
  */
-void display_status_window(const char *status, const char *title) {
+void display_status_window(const char *status, const char *title)
+{
     char status_cpy[strlen(status) + 1];
     strcpy(status_cpy, status);
     int maxx_row = 0, maxy = 0, maxx = 0;
     int current_row_length = 0;
-    int rows = 0, height = 0, width=0;
+    int rows = 0, height = 0, width = 0;
     int startx = 0, starty = 0;
     WINDOW *win = NULL;
     int text_starty, y, x;
@@ -565,8 +593,10 @@ void display_status_window(const char *status, const char *title) {
 
     strcpy(status_cpy, status);
 
-    for (int count = 0; status_cpy[count] != '\0'; count++) {
-        if (status_cpy[count] == '\n') {
+    for (int count = 0; status_cpy[count] != '\0'; count++)
+    {
+        if (status_cpy[count] == '\n')
+        {
             rows++;
             if (current_row_length > maxx_row)
                 maxx_row = current_row_length;
@@ -576,19 +606,19 @@ void display_status_window(const char *status, const char *title) {
             current_row_length++;
     }
 
-    if(current_row_length > maxx_row)
+    if (current_row_length > maxx_row)
         maxx_row = current_row_length;
 
     getmaxyx(stdscr, maxy, maxx);
 
-    if(rows >= maxy)
+    if (rows >= maxy)
         height = maxy + 2;
     else
         height = rows + 2;
-    if(rows == 0)
+    if (rows == 0)
         height = 3;
 
-    if(maxx_row >= maxx)
+    if (maxx_row >= maxx)
         width = maxx;
     else
         width = maxx_row + 4;
@@ -612,11 +642,12 @@ void display_status_window(const char *status, const char *title) {
     mvwprintw(win, 0, (width / 2) - (strlen(title) / 2), "%s", title);
     wattroff(win, A_UNDERLINE);
 
-    if(rows == 0)
+    if (rows == 0)
         wattron(win, COLOR_PAIR(13));
 
     line_start = status_cpy;
-    while ((line_end = strchr(line_start, '\n')) != NULL) {
+    while ((line_end = strchr(line_start, '\n')) != NULL)
+    {
         line_length = line_end - line_start;
         if (line_length > width - 2)
             line_length = width - 6;

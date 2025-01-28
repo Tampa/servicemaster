@@ -1,5 +1,5 @@
 project('ServiceMaster', 'c',
-  version : '1.4.3',
+  version : '1.4.4',
   default_options : ['warning_level=3', 'buildtype=release', 'strip=true'])
 
 ncurses_dep = dependency('ncurses')
