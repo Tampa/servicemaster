@@ -48,7 +48,7 @@ For bug reports, feature requests, or general inquiries:
 
 ## Version
 
-1.4.2
+1.4.3
 
 Build:
 ```bash
