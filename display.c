@@ -33,6 +33,7 @@ extern const char **service_str_types;
 static int display_row(Service *svc, int row)
 {
     int spc = 5;
+    int i;
 
     char short_unit[D_XLOAD - 2];
     char short_unit_file_state[10];
@@ -53,6 +54,10 @@ static int display_row(Service *svc, int row)
     if (mode != ALL && mode != svc->type)
         return 0;
 
+    // Clear the unit name column
+    for (i = 1; i < D_XLOAD - 1; i++)
+        mvaddch(row + spc, i, ' ');
+
     // if the unit name is too long, truncate it and add ...
     if (strlen(svc->unit) >= D_XLOAD - 3)
     {
@@ -62,6 +67,10 @@ static int display_row(Service *svc, int row)
     }
     else
         mvaddstr(row + spc, 1, svc->unit);
+
+    // Clear the state column
+    for (i = D_XLOAD; i < D_XACTIVE - 1; i++)
+        mvaddch(row + spc, i, ' ');
 
     // if the state is too long, truncate it (enabled-runtime will be enabled-r)
     if (!svc->unit_file_state || strlen(svc->unit_file_state) == 0)
@@ -75,8 +84,22 @@ static int display_row(Service *svc, int row)
     else
         mvprintw(row + spc, D_XLOAD, "%s", svc->unit_file_state ? svc->unit_file_state : svc->load);
 
+    // Clear the active column
+    for (i = D_XACTIVE; i < D_XSUB - 1; i++)
+        mvaddch(row + spc, i, ' ');
+
     mvprintw(row + spc, D_XACTIVE, "%s", svc->active);
+
+    // Clear the sub column
+    for (i = D_XSUB; i < D_XDESCRIPTION - 1; i++)
+        mvaddch(row + spc, i, ' ');
+
     mvprintw(row + spc, D_XSUB, "%s", svc->sub);
+
+    // Clear the description column
+    for (i = D_XDESCRIPTION; i < getmaxx(stdscr) - 1; i++)
+        mvaddch(row + spc, i, ' ');
+
     // if the description is too long, truncate it and add ...
     if (strlen(svc->description) >= maxx_description)
     {
