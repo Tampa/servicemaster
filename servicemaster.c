@@ -3,6 +3,22 @@
 #include "bus.h"
 
 /**
+ * Displays a welcome message with basic usage and security information.
+ */
+static void show_welcome_message()
+{
+    const char *welcome_text = 
+        "Welcome to ServiceMaster!\n\n"
+        "This tool allows you to manage systemd units through an intuitive interface.\n\n"
+        "SECURITY GUIDELINE:\n"
+        "- Only root can manage system services\n"
+        "- Regular users can only manage their own user services\n\n"
+        "Press ENTER to continue...";
+
+    display_status_window(welcome_text, "ServiceMaster " D_VERSION);
+}
+
+/**
  * Handles user input and performs various operations on systemd services.
  * This function is responsible for:
  * - Handling user input from the keyboard, including navigation, service operations, and mode changes
@@ -41,6 +57,7 @@ int main()
   
     bus_init();
     display_init();
+    show_welcome_message();
     display_redraw(bus_currently_displayed());
 
     wait_input();
