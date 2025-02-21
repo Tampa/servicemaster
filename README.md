@@ -50,14 +50,42 @@ For bug reports, feature requests, or general inquiries:
 
 1.4.5
 
-Build:
+## Building & Install:
+
+### Dependencies
+
+#### Archlinux
+
 ```bash
-mkdir builddir && meson setup builddir --buildtype=release --prefix=/usr/bin && meson compile -C builddir
+pacman -S cmake meson ncurses system-libs
 ```
-Install:
+
+#### Ubuntu/Debian
+
 ```bash
-sudo meson install -C builddir
+apt install cmake meson libncurses5-dev libsystemd-dev
 ```
+
+### Building
+
+```bash
+git clone https://github.com/Lennart1978/servicemaster.git
+
+cd servicemaster/
+
+mkdir builddir
+
+meson setup builddir --buildtype=release --prefix=/usr/bin
+
+meson compile -C builddir
+```
+
+### Install
+
+```bash
+meson install -C builddir
+```
+
 
 For Archlinux users: There is 'servicemaster-bin' in the AUR.
 
