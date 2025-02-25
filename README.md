@@ -41,12 +41,6 @@ This project is licensed under the MIT License. See the [LICENSE](LICENSE) file 
 
 Lennart Martens
 
-## Contact
-
-For bug reports, feature requests, or general inquiries:
-
-- Email: <monkeynator78@gmail.com>
-
 ## Version
 
 1.4.5
