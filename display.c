@@ -16,43 +16,23 @@ static uid_t euid = INT32_MAX;
 
 extern const char **service_str_types;
 
-/**
- * Prints the service information for the specified index and row.
- *
- * If the current row matches the position, the service information is printed with
- * a highlighted background. Otherwise, the service information is printed with a
- * normal background.
- *
- * The service information includes the unit name, load state, active state, sub state,
- * and description. If the service information is too long to fit in the available
- * space, it is truncated and an ellipsis is added.
- *
- * @param i The index of the service to print.
- * @param row The row to print the service information on.
- */
-static int display_row(Service *svc, int row)
-{
-    int spc = 5;
-    int i;
+// Vorwärtsdeklaration der Funktion
+static void display_service_row(Service *svc, int row, int spc);
 
+/**
+ * Handles the display of a service row with all its details.
+ * 
+ * @param svc The service to display
+ * @param row The row number (relative position)
+ * @param spc The spacing/offset from the top
+ */
+static void display_service_row(Service *svc, int row, int spc)
+{
+    int i;
     char short_unit[D_XLOAD - 2];
     char short_unit_file_state[10];
     char *short_description;
     size_t maxx_description = getmaxx(stdscr) - D_XDESCRIPTION - 1;
-
-    if (position == row)
-    {
-        attron(COLOR_PAIR(8));
-        attron(A_BOLD);
-    }
-    else
-    {
-        attroff(COLOR_PAIR(8));
-        attroff(A_BOLD);
-    }
-
-    if (mode != ALL && mode != svc->type)
-        return 0;
 
     // Clear the unit name column
     for (i = 1; i < D_XLOAD - 1; i++)
@@ -112,18 +92,52 @@ static int display_row(Service *svc, int row)
     else
         mvaddstr(row + spc, D_XDESCRIPTION, svc->description);
 
-    svc->ypos = row + 4;
-    return 1;
+    // Speichere die tatsächliche Y-Position des Dienstes
+    svc->ypos = row + spc;
 }
 
 static void display_services(Bus *bus)
 {
-    int max_rows = getmaxy(stdscr) - 5;
+    int max_rows, maxy;
     int row = 0;
     int idx = index_start;
     Service *svc;
+    int headerrow = 3;
+    struct winsize size;
+    int visible_services = 0;
+    int total_services = 0;
+    int dummy_maxx; // Dummy-Variable für getmaxyx
+    
+    getmaxyx(stdscr, maxy, dummy_maxx);
+    (void)dummy_maxx; // Markiere als bewusst ungenutzt
+    
+    ioctl(STDOUT_FILENO, TIOCGWINSZ, &size);
+    if (size.ws_col < (strlen(D_FUNCTIONS) + strlen(D_SERVICE_TYPES) + 2))
+    {
+        headerrow = 4;
+    }
+    
+    // Anpassen des Startpunkts basierend auf der Headergröße
+    int spc = headerrow + 2; // +2 für die Trennlinie und einen Abstand
+    
+    // Berechne die maximale Anzahl von Zeilen, die angezeigt werden können
+    max_rows = maxy - spc - 1;
+
+    // Zähle die Gesamtzahl der Dienste des aktuellen Typs
+    for (int i = 0; ; i++) {
+        svc = service_nth(bus, i);
+        if (!svc)
+            break;
+        if (mode == ALL || mode == svc->type)
+            total_services++;
+    }
 
     services_invalidate_ypos(bus);
+
+    // Stelle sicher, dass index_start nicht zu groß ist
+    if (index_start > 0 && index_start >= total_services - max_rows) {
+        index_start = total_services > max_rows ? total_services - max_rows : 0;
+    }
 
     while (true)
     {
@@ -134,9 +148,39 @@ static void display_services(Bus *bus)
         if (row >= max_rows)
             break;
 
-        row += display_row(svc, row);
+        if (mode != ALL && mode != svc->type)
+        {
+            idx++;
+            continue;
+        }
+
+        if (position == row)
+        {
+            attron(COLOR_PAIR(8));
+            attron(A_BOLD);
+        }
+        else
+        {
+            attroff(COLOR_PAIR(8));
+            attroff(A_BOLD);
+        }
+
+        display_service_row(svc, row, spc);
+        
+        row++;
         idx++;
+        visible_services++;
     }
+    
+    // Stelle sicher, dass der Cursor nicht außerhalb des sichtbaren Bereichs ist
+    if (position >= visible_services && visible_services > 0)
+    {
+        position = visible_services - 1;
+    }
+
+    // Stelle sicher, dass alle Attribute zurückgesetzt werden
+    attroff(COLOR_PAIR(8));
+    attroff(A_BOLD);
 }
 
 /**
@@ -237,24 +281,43 @@ int display_key_pressed(sd_event_source *s, int fd, uint32_t revents, void *data
     int c;
     char *status = NULL;
     int max_services = 0;
-    int page_scroll = getmaxy(stdscr) - 6;
+    int maxy;
+    int dummy_maxx; // Dummy-Variable für getmaxyx
+    
+    getmaxyx(stdscr, maxy, dummy_maxx);
+    (void)dummy_maxx; // Markiere als bewusst ungenutzt
+    
+    int headerrow = 3;
+    struct winsize size;
+    ioctl(STDOUT_FILENO, TIOCGWINSZ, &size);
+    if (size.ws_col < (strlen(D_FUNCTIONS) + strlen(D_SERVICE_TYPES) + 2))
+    {
+        headerrow = 4;
+    }
+    int spc = headerrow + 2; // +2 für die Trennlinie und einen Abstand
+    int max_visible_rows = maxy - spc - 1;  // Exakte Berechnung der sichtbaren Zeilen
+    int page_scroll = max_visible_rows;  // Für Page Up/Down
     bool update_state = false;
-    int maxy = getmaxy(stdscr);
     Service *svc = NULL;
     Bus *bus = (Bus *)data;
 
     if ((revents & (EPOLLHUP | EPOLLERR | EPOLLRDHUP)) > 0)
-        sm_err_set("Error handling input: %s\n", strerror(errno));
+        return 0;
 
-    while ((c = getch()))
-    {
-        if (c == ERR)
-            return 0;
+    c = getch();
 
-        max_services = bus->total_types[mode];
+    // Zähle die Gesamtzahl der Dienste des aktuellen Typs
+    for (int i = 0; ; i++) {
+        svc = service_nth(bus, i);
+        if (!svc)
+            break;
+        if (mode == ALL || mode == svc->type)
+            max_services++;
+    }
 
-        switch (tolower(c))
-        {
+    svc = service_nth(bus, position + index_start);
+
+    switch (c) {
         case KEY_ESC:;
             char seq[10] = {0};
             int i = 0, c;
@@ -321,44 +384,47 @@ int display_key_pressed(sd_event_source *s, int fd, uint32_t revents, void *data
             D_OP(bus, svc, RELOAD, "Reload");
             break;
         case KEY_UP:
-            if (position > 0)
+            if (position > 0) {
+                // Wenn Position > 0, bewege nur den Cursor nach oben
                 position--;
-            else if (index_start > 0)
-            {
+            } else if (index_start > 0) {
+                // Wenn wir am oberen Rand sind und es gibt noch Einträge oben, scrolle nach oben
                 index_start--;
-                erase();
             }
             break;
 
         case KEY_DOWN:
-            if (position < maxy - 5 && index_start + position < max_services)
+            if (position < max_visible_rows - 1 && position + index_start < max_services - 1) {
+                // Wenn wir nicht am unteren Rand sind und es gibt noch Einträge, bewege den Cursor
                 position++;
-            else if (index_start + position < max_services - 1)
-            {
+            } else if (position + index_start < max_services - 1) {
+                // Wenn wir am unteren Rand sind und es gibt noch Einträge, scrolle nach unten
                 index_start++;
-                erase();
             }
             break;
 
         case KEY_PPAGE: // Page Up
-            if (index_start > 0)
-            {
+            if (index_start > 0) {
+                // Scrolle eine Seite nach oben
                 index_start -= page_scroll;
                 if (index_start < 0)
                     index_start = 0;
                 erase();
             }
-
             position = 0;
             break;
 
         case KEY_NPAGE: // Page Down
-            if (index_start < max_services - page_scroll)
-            {
+            if (index_start + max_visible_rows < max_services) {
+                // Scrolle eine Seite nach unten
                 index_start += page_scroll;
-                position = maxy - 6;
+                if (index_start + max_visible_rows > max_services)
+                    index_start = max_services - max_visible_rows;
+                if (index_start < 0)
+                    index_start = 0;
                 erase();
             }
+            position = 0;
             break;
 
         case KEY_LEFT:
@@ -381,10 +447,8 @@ int display_key_pressed(sd_event_source *s, int fd, uint32_t revents, void *data
             break;
 
         case KEY_RETURN:
-            svc = service_ypos(bus, position + 4);
+            svc = service_nth(bus, position + index_start);
             if (!svc)
-                break;
-            if (position < 0)
                 break;
             status = service_status_info(bus, svc);
 
@@ -450,31 +514,28 @@ int display_key_pressed(sd_event_source *s, int fd, uint32_t revents, void *data
             break;
 
         default:
-            continue;
-        }
+            break;
+    }
 
-        if (update_state)
-            bus_update_unit_file_state(bus, svc);
+    if (update_state)
+        bus_update_unit_file_state(bus, svc);
 
-        /* redraw any lines we have invalidated */
-        if (update_state)
+    /* redraw any lines we have invalidated */
+    if (update_state)
+    {
+        display_redraw_row(svc);
+        svc->changed = 0;
+    }
+
+    // Stelle sicher, dass wir nicht über das Ende der Liste hinausschauen
+    if (index_start + position >= max_services)
+    {
+        if (max_services > 0)
         {
-            display_redraw_row(svc);
-            svc->changed = 0;
-        }
-
-        if (index_start < 0)
-            index_start = 0;
-
-        if (position < 0)
-            position = 0;
-
-        if (index_start + position >= max_services)
-        {
-            if (max_services > maxy - 6)
+            if (max_services > max_visible_rows)
             {
-                index_start = max_services - (maxy - 6);
-                position = maxy - 7;
+                index_start = max_services - max_visible_rows;
+                position = max_visible_rows - 1;
             }
             else
             {
@@ -482,9 +543,17 @@ int display_key_pressed(sd_event_source *s, int fd, uint32_t revents, void *data
                 position = max_services - 1;
             }
         }
-
-        display_redraw(bus);
+        else
+        {
+            index_start = 0;
+            position = 0;
+        }
     }
+
+    // Vollständiges Neuzeichnen des Bildschirms
+    erase();
+    display_redraw(bus);
+    refresh();
 
     return 0;
 }
