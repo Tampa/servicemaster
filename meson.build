@@ -1,6 +1,6 @@
 project('ServiceMaster', 'c',
   version : '1.5.0',
-  default_options : ['warning_level=3', 'buildtype=release', 'strip=true'])
+  default_options : ['warning_level=3', 'buildtype=release', 'strip=true', 'c_std=c11'])
 
 ncurses_dep = dependency('ncurses')
 systemd_dep = dependency('libsystemd')

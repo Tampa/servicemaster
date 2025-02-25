@@ -16,12 +16,12 @@ static uid_t euid = INT32_MAX;
 
 extern const char **service_str_types;
 
-// Forward declaration
+// Forward declaration of display_service_row
 static void display_service_row(Service *svc, int row, int spc);
 
 /**
  * Handles the display of a service row with all its details.
- * 
+ *
  * @param svc The service to display
  * @param row The row number (relative position)
  * @param spc The spacing/offset from the top
@@ -38,7 +38,7 @@ static void display_service_row(Service *svc, int row, int spc)
     for (i = 1; i < D_XLOAD - 1; i++)
         mvaddch(row + spc, i, ' ');
 
-    // if the unit name is too long, truncate it and add ...
+    // If the unit name is too long, truncate it and add ...
     if (strlen(svc->unit) >= D_XLOAD - 3)
     {
         strncpy(short_unit, svc->unit, D_XLOAD - 2);
@@ -52,7 +52,7 @@ static void display_service_row(Service *svc, int row, int spc)
     for (i = D_XLOAD; i < D_XACTIVE - 1; i++)
         mvaddch(row + spc, i, ' ');
 
-    // if the state is too long, truncate it (enabled-runtime will be enabled-r)
+    // If the state is too long, truncate it (enabled-runtime will be enabled-r)
     if (!svc->unit_file_state || strlen(svc->unit_file_state) == 0)
         mvprintw(row + spc, D_XLOAD, "%s", svc->load);
     else if (strlen(svc->unit_file_state) > 9)
@@ -80,7 +80,7 @@ static void display_service_row(Service *svc, int row, int spc)
     for (i = D_XDESCRIPTION; i < getmaxx(stdscr) - 1; i++)
         mvaddch(row + spc, i, ' ');
 
-    // if the description is too long, truncate it and add ...
+    // If the description is too long, truncate it and add ...
     if (strlen(svc->description) >= maxx_description)
     {
         short_description = alloca(maxx_description + 1);
@@ -92,7 +92,7 @@ static void display_service_row(Service *svc, int row, int spc)
     else
         mvaddstr(row + spc, D_XDESCRIPTION, svc->description);
 
-    // Speichere die tatsächliche Y-Position des Dienstes
+    // Save the y-position of the service
     svc->ypos = row + spc;
 }
 
@@ -245,7 +245,7 @@ static void display_text_and_lines(Bus *bus)
     attron(COLOR_PAIR(4));
     attron(A_UNDERLINE);
 
-    /* Sets the type count */
+    // Sets the type count
     strncpy(tmptype, service_string_type(mode), 16);
     tmptype[sizeof(tmptype) - 1] = '\0';
     tmptype[0] = toupper(tmptype[0]);
@@ -520,7 +520,7 @@ int display_key_pressed(sd_event_source *s, int fd, uint32_t revents, void *data
     if (update_state)
         bus_update_unit_file_state(bus, svc);
 
-    /* redraw any lines we have invalidated */
+    // Redraw any lines we have invalidated
     if (update_state)
     {
         display_redraw_row(svc);
@@ -587,8 +587,8 @@ void display_redraw(Bus *bus)
  */
 void display_redraw_row(Service *svc)
 {
-    /* If the service is on the screen, invalidate the row so it refreshes
-     * correctly */
+    // If the service is on the screen, invalidate the row so it refreshes
+    // correctly
     int x, y;
 
     if (svc->ypos < 0)
