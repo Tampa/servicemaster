@@ -44,13 +44,14 @@ Lennart Martens
 ## Contact
 
 For bug reports, feature requests, or general inquiries:
-- Email: monkeynator78@gmail.com
+
+- Email: <monkeynator78@gmail.com>
 
 ## Version
 
 1.4.5
 
-## Building & Install:
+## Building & Install
 
 ### Dependencies
 
@@ -86,11 +87,10 @@ meson compile -C builddir
 meson install -C builddir
 ```
 
-
 For Archlinux users: There is 'servicemaster-bin' in the AUR.
 
 ServiceMaster in 'Kitty' terminal and 'Monokai' theme:
-<img src="sm-kitty-monokai.png" alt="SM-screenshot"></img>
+![ss1]("sm-kitty-monokai.png")
 ServiceMaster in 'Kgx' standard Gnome terminal emulator:
-<img src="servicemaster.png" alt="SM-screenshot"></img>
-<img src="servicemaster-logo.jpeg" alt="SM-Logo"></img>
+![ss2]("servicemaster.png")
+![ss3]("servicemaster-logo.jpeg")
