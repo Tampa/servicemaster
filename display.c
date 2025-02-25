@@ -16,7 +16,7 @@ static uid_t euid = INT32_MAX;
 
 extern const char **service_str_types;
 
-// Vorwärtsdeklaration der Funktion
+// Forward declaration
 static void display_service_row(Service *svc, int row, int spc);
 
 /**
@@ -527,7 +527,7 @@ int display_key_pressed(sd_event_source *s, int fd, uint32_t revents, void *data
         svc->changed = 0;
     }
 
-    // Stelle sicher, dass wir nicht über das Ende der Liste hinausschauen
+    // Make sure we are not going over the end of the list
     if (index_start + position >= max_services)
     {
         if (max_services > 0)
@@ -550,7 +550,7 @@ int display_key_pressed(sd_event_source *s, int fd, uint32_t revents, void *data
         }
     }
 
-    // Vollständiges Neuzeichnen des Bildschirms
+    // Full redraw of the screen
     erase();
     display_redraw(bus);
     refresh();
