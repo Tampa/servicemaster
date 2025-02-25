@@ -90,7 +90,7 @@ meson install -C builddir
 For Archlinux users: There is 'servicemaster-bin' in the AUR.
 
 ServiceMaster in 'Kitty' terminal and 'Monokai' theme:
-![ss1]("sm-kitty-monokai.png")
+![ss1](sm-kitty-monokai.png)
 ServiceMaster in 'Kgx' standard Gnome terminal emulator:
-![ss2]("servicemaster.png")
-![ss3]("servicemaster-logo.jpeg")
+![ss2](servicemaster.png)
+![ss3](servicemaster-logo.jpeg)
