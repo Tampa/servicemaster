@@ -81,7 +81,7 @@ meson compile -C builddir
 meson install -C builddir
 ```
 
-For Archlinux users: There is 'servicemaster-bin' in the AUR.
+For Archlinux users: There is 'servicemaster-bin' and the most uptodate version "servicemaster-git" in the AUR.
 
 ServiceMaster in 'Kitty' terminal and 'Monokai' theme:
 ![ss1](sm-kitty-monokai.png)
