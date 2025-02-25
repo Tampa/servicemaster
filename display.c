@@ -106,10 +106,10 @@ static void display_services(Bus *bus)
     struct winsize size;
     int visible_services = 0;
     int total_services = 0;
-    int dummy_maxx; // Dummy-Variable für getmaxyx
+    int dummy_maxx; // Dummy variable for getmaxyx
     
     getmaxyx(stdscr, maxy, dummy_maxx);
-    (void)dummy_maxx; // Markiere als bewusst ungenutzt
+    (void)dummy_maxx; // Mark as deliberately unused
     
     ioctl(STDOUT_FILENO, TIOCGWINSZ, &size);
     if (size.ws_col < (strlen(D_FUNCTIONS) + strlen(D_SERVICE_TYPES) + 2))
@@ -117,13 +117,13 @@ static void display_services(Bus *bus)
         headerrow = 4;
     }
     
-    // Anpassen des Startpunkts basierend auf der Headergröße
-    int spc = headerrow + 2; // +2 für die Trennlinie und einen Abstand
+    // Adjust the starting point based on header size
+    int spc = headerrow + 2; // +2 for the separator line and a space
     
-    // Berechne die maximale Anzahl von Zeilen, die angezeigt werden können
+    // Calculate the maximum number of rows that can be displayed
     max_rows = maxy - spc - 1;
 
-    // Zähle die Gesamtzahl der Dienste des aktuellen Typs
+    // Count the total number of services of the current type
     for (int i = 0; ; i++) {
         svc = service_nth(bus, i);
         if (!svc)
@@ -134,7 +134,7 @@ static void display_services(Bus *bus)
 
     services_invalidate_ypos(bus);
 
-    // Stelle sicher, dass index_start nicht zu groß ist
+    // Make sure index_start is not too large
     if (index_start > 0 && index_start >= total_services - max_rows) {
         index_start = total_services > max_rows ? total_services - max_rows : 0;
     }
@@ -172,13 +172,13 @@ static void display_services(Bus *bus)
         visible_services++;
     }
     
-    // Stelle sicher, dass der Cursor nicht außerhalb des sichtbaren Bereichs ist
+    // Make sure the cursor is not outside the visible area
     if (position >= visible_services && visible_services > 0)
     {
         position = visible_services - 1;
     }
 
-    // Stelle sicher, dass alle Attribute zurückgesetzt werden
+    // Make sure all attributes are reset
     attroff(COLOR_PAIR(8));
     attroff(A_BOLD);
 }
@@ -282,10 +282,10 @@ int display_key_pressed(sd_event_source *s, int fd, uint32_t revents, void *data
     char *status = NULL;
     int max_services = 0;
     int maxy;
-    int dummy_maxx; // Dummy-Variable für getmaxyx
+    int dummy_maxx; // Dummy variable for getmaxyx
     
     getmaxyx(stdscr, maxy, dummy_maxx);
-    (void)dummy_maxx; // Markiere als bewusst ungenutzt
+    (void)dummy_maxx; // Mark as deliberately unused
     
     int headerrow = 3;
     struct winsize size;
@@ -294,9 +294,9 @@ int display_key_pressed(sd_event_source *s, int fd, uint32_t revents, void *data
     {
         headerrow = 4;
     }
-    int spc = headerrow + 2; // +2 für die Trennlinie und einen Abstand
-    int max_visible_rows = maxy - spc - 1;  // Exakte Berechnung der sichtbaren Zeilen
-    int page_scroll = max_visible_rows;  // Für Page Up/Down
+    int spc = headerrow + 2; // +2 for the separator line and a space
+    int max_visible_rows = maxy - spc - 1;  // Exact calculation of visible rows
+    int page_scroll = max_visible_rows;  // For Page Up/Down
     bool update_state = false;
     Service *svc = NULL;
     Bus *bus = (Bus *)data;
@@ -306,7 +306,7 @@ int display_key_pressed(sd_event_source *s, int fd, uint32_t revents, void *data
 
     c = getch();
 
-    // Zähle die Gesamtzahl der Dienste des aktuellen Typs
+    // Count the total number of services of the current type
     for (int i = 0; ; i++) {
         svc = service_nth(bus, i);
         if (!svc)
@@ -385,27 +385,27 @@ int display_key_pressed(sd_event_source *s, int fd, uint32_t revents, void *data
             break;
         case KEY_UP:
             if (position > 0) {
-                // Wenn Position > 0, bewege nur den Cursor nach oben
+                // If position > 0, just move the cursor up
                 position--;
             } else if (index_start > 0) {
-                // Wenn wir am oberen Rand sind und es gibt noch Einträge oben, scrolle nach oben
+                // If we're at the top edge and there are more entries above, scroll up
                 index_start--;
             }
             break;
 
         case KEY_DOWN:
             if (position < max_visible_rows - 1 && position + index_start < max_services - 1) {
-                // Wenn wir nicht am unteren Rand sind und es gibt noch Einträge, bewege den Cursor
+                // If we're not at the bottom edge and there are more entries, move the cursor
                 position++;
             } else if (position + index_start < max_services - 1) {
-                // Wenn wir am unteren Rand sind und es gibt noch Einträge, scrolle nach unten
+                // If we're at the bottom edge and there are more entries, scroll down
                 index_start++;
             }
             break;
 
         case KEY_PPAGE: // Page Up
             if (index_start > 0) {
-                // Scrolle eine Seite nach oben
+                // Scroll one page up
                 index_start -= page_scroll;
                 if (index_start < 0)
                     index_start = 0;
@@ -416,7 +416,7 @@ int display_key_pressed(sd_event_source *s, int fd, uint32_t revents, void *data
 
         case KEY_NPAGE: // Page Down
             if (index_start + max_visible_rows < max_services) {
-                // Scrolle eine Seite nach unten
+                // Scroll one page down
                 index_start += page_scroll;
                 if (index_start + max_visible_rows > max_services)
                     index_start = max_services - max_visible_rows;
