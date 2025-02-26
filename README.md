@@ -82,6 +82,8 @@ meson install -C builddir
 ```
 
 ## For Archlinux users: There is 'servicemaster-git' (recommended) and 'servicemaster-bin' in the AUR
+### I recommend installing the -git version ! It is in most cases much more bugfree / stable and uptodate than the -bin version.
+(I'm not the maintainer of the -bin version)
 
 ServiceMaster in 'Kitty' terminal and 'Monokai' theme:
 ![ss1](sm-kitty-monokai.png)
