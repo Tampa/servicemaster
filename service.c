@@ -20,7 +20,7 @@ const char * service_str_types[] = {
     "__unknown__"
 };
 
-/* Using the the end of the units name, identify its service type */
+/* Using the end of the units name, identify its service type */
 static void service_set_type(Service *svc)
 {
     const char* dot = strrchr(svc->unit, '.');
@@ -139,7 +139,7 @@ char *service_logs(Service *svc, int lines) {
         strncpy(ll->pid, val + 5, sizeof(ll->pid) - 1);
         ll->pid[sizeof(ll->pid) - 1] = '\0';
 
-        /* The 64 is to over-compensate for writing in the timestamp and whitespace later */
+        // The 64 is to over-compensate for writing in the timestamp and whitespace later
         total += strlen(ll->msg) + strlen(ll->hostname) + strlen(ll->syslogident) + strlen(ll->pid) + 64;
 
         left--;
@@ -425,7 +425,7 @@ void services_prune_dead_units(Bus *bus, uint64_t ts)
       svc = n;
     }
 
-    /* If and only if we removed a item from our ACTIVE list, clear the screen */
+    // If and only if we removed a item from our ACTIVE list, clear the screen
     if (removed)
         display_erase();
     return;

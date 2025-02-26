@@ -1,11 +1,9 @@
 #include <systemd/sd-bus.h>
 #include <stdbool.h>
-
 #include "sm_err.h"
 #include "service.h"
 #include "bus.h"
 #include "display.h"
-
 #define STS state[0]
 #define STSBUS state[0].bus
 
@@ -28,18 +26,18 @@ struct bus_state state[2] = {0};
  */
 static int bus_update_service_property(Service *svc, sd_bus_message *reply)
 {
-    /* Format of message at this point is: '{sv}' */
+    // Format of message at this point is: '{sv}'
     int rc;
     const char *k, *active, *sub;
 
-    /* s: Next item is the key out of the dictionary */
+    // s: Next item is the key out of the dictionary
     rc = sd_bus_message_read(reply, "s", &k);
     if (rc < 0)
         sm_err_set("Cannot read dictionary key item from array: %s\n", strerror(-rc));
 
-    /* If its a property we want to measure, update the related property */
+    // If its a property we want to measure, update the related property
     if (strcmp(k, "ActiveState") == 0) {
-        /* v: Variant, always a string in this case */
+        // v: Variant, always a string in this case
         rc = sd_bus_message_read(reply, "v", "s", &active);
         if (rc < 0)
             sm_err_set("Cannot fetch value from dictionary: %s\n", strerror(-rc));
@@ -49,7 +47,7 @@ static int bus_update_service_property(Service *svc, sd_bus_message *reply)
     }
 
     else if (strcmp(k, "SubState") == 0) {
-        /* v: Variant, always a string in this case */
+        // v: Variant, always a string in this case
         rc = sd_bus_message_read(reply, "v", "s", &sub);
         if (rc < 0)
             sm_err_set("Cannot fetch value from dictionary: %s\n", strerror(-rc));
@@ -59,7 +57,7 @@ static int bus_update_service_property(Service *svc, sd_bus_message *reply)
     }
 
     else
-      /* Anything else is skipped */
+      // Anything else is skipped
       sd_bus_message_skip(reply, NULL);
 
     return 0;
@@ -324,10 +322,10 @@ fin:
     return rc;
 }
 
-/* Callback which is invoked when a reload event is captured */
+// Callback which is invoked when a reload event is captured
 static int bus_systemd_reloaded(sd_bus_message *reply, void *data, sd_bus_error *err)
 {
-    /* This line here is a bug. Reload should be tracked in the services list */
+    // This line here is a bug. Reload should be tracked in the services list
     int  rc;
     struct bus_state *st = (struct bus_state *)data;
 
@@ -342,9 +340,9 @@ static int bus_systemd_reloaded(sd_bus_message *reply, void *data, sd_bus_error 
         return -1;
     }
 
-    /* Reload daemon services for specific bus type and conditionally redraw screen) */
-    /* The reload emits a boolean if it starts set to true, once the reload finishes
-     * the callback emits again, with the boolean set to false */
+    // Reload daemon services for specific bus type and conditionally redraw screen)
+    // The reload emits a boolean if it starts set to true, once the reload finishes
+    // the callback emits again, with the boolean set to false
     if (st->reloading)
         goto fin;
 
@@ -353,7 +351,7 @@ static int bus_systemd_reloaded(sd_bus_message *reply, void *data, sd_bus_error 
     if (rc < 0)
         sm_err_set("Cannot reload system units: %s\n", strerror(-rc));
 
-    /* If the affected bus is the one being shown */
+    // If the affected bus is the one being shown
     if (((st->type == SYSTEM) && display_bus_type() == SYSTEM)
     || ((st->type != SYSTEM) && display_bus_type() != SYSTEM))
         display_redraw(st);
@@ -369,7 +367,7 @@ static int bus_setup_bus(struct bus_state *st)
     sd_bus_error error = SD_BUS_ERROR_NULL;
     int rc = 0;
 
-    /* Now subscribe to events in systemd */
+    // Now subscribe to events in systemd
     rc = sd_bus_call_method(st->bus,
             SD_DESTINATION,
             SD_OPATH,
@@ -388,7 +386,7 @@ static int bus_setup_bus(struct bus_state *st)
         goto fin;
     }
 
-    /* We care about the reloading signal/event */
+    // We care about the reloading signal/event
     rc = sd_bus_match_signal(st->bus, 
             NULL,
             SD_DESTINATION,

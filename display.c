@@ -16,49 +16,29 @@ static uid_t euid = INT32_MAX;
 
 extern const char **service_str_types;
 
-/**
- * Prints the service information for the specified index and row.
- *
- * If the current row matches the position, the service information is printed with
- * a highlighted background. Otherwise, the service information is printed with a
- * normal background.
- *
- * The service information includes the unit name, load state, active state, sub state,
- * and description. If the service information is too long to fit in the available
- * space, it is truncated and an ellipsis is added.
- *
- * @param i The index of the service to print.
- * @param row The row to print the service information on.
- */
-static int display_row(Service *svc, int row)
-{
-    int spc = 5;
-    int i;
+// Forward declaration of display_service_row
+static void display_service_row(Service *svc, int row, int spc);
 
+/**
+ * Handles the display of a service row with all its details.
+ *
+ * @param svc The service to display
+ * @param row The row number (relative position)
+ * @param spc The spacing/offset from the top
+ */
+static void display_service_row(Service *svc, int row, int spc)
+{
+    int i;
     char short_unit[D_XLOAD - 2];
     char short_unit_file_state[10];
     char *short_description;
     size_t maxx_description = getmaxx(stdscr) - D_XDESCRIPTION - 1;
 
-    if (position == row)
-    {
-        attron(COLOR_PAIR(8));
-        attron(A_BOLD);
-    }
-    else
-    {
-        attroff(COLOR_PAIR(8));
-        attroff(A_BOLD);
-    }
-
-    if (mode != ALL && mode != svc->type)
-        return 0;
-
     // Clear the unit name column
     for (i = 1; i < D_XLOAD - 1; i++)
         mvaddch(row + spc, i, ' ');
 
-    // if the unit name is too long, truncate it and add ...
+    // If the unit name is too long, truncate it and add ...
     if (strlen(svc->unit) >= D_XLOAD - 3)
     {
         strncpy(short_unit, svc->unit, D_XLOAD - 2);
@@ -72,7 +52,7 @@ static int display_row(Service *svc, int row)
     for (i = D_XLOAD; i < D_XACTIVE - 1; i++)
         mvaddch(row + spc, i, ' ');
 
-    // if the state is too long, truncate it (enabled-runtime will be enabled-r)
+    // If the state is too long, truncate it (enabled-runtime will be enabled-r)
     if (!svc->unit_file_state || strlen(svc->unit_file_state) == 0)
         mvprintw(row + spc, D_XLOAD, "%s", svc->load);
     else if (strlen(svc->unit_file_state) > 9)
@@ -100,7 +80,7 @@ static int display_row(Service *svc, int row)
     for (i = D_XDESCRIPTION; i < getmaxx(stdscr) - 1; i++)
         mvaddch(row + spc, i, ' ');
 
-    // if the description is too long, truncate it and add ...
+    // If the description is too long, truncate it and add ...
     if (strlen(svc->description) >= maxx_description)
     {
         short_description = alloca(maxx_description + 1);
@@ -112,18 +92,52 @@ static int display_row(Service *svc, int row)
     else
         mvaddstr(row + spc, D_XDESCRIPTION, svc->description);
 
-    svc->ypos = row + 4;
-    return 1;
+    // Save the y-position of the service
+    svc->ypos = row + spc;
 }
 
 static void display_services(Bus *bus)
 {
-    int max_rows = getmaxy(stdscr) - 5;
+    int max_rows, maxy;
     int row = 0;
     int idx = index_start;
     Service *svc;
+    int headerrow = 3;
+    struct winsize size;
+    int visible_services = 0;
+    int total_services = 0;
+    int dummy_maxx; // Dummy variable for getmaxyx
+    
+    getmaxyx(stdscr, maxy, dummy_maxx);
+    (void)dummy_maxx; // Mark as deliberately unused
+    
+    ioctl(STDOUT_FILENO, TIOCGWINSZ, &size);
+    if (size.ws_col < (strlen(D_FUNCTIONS) + strlen(D_SERVICE_TYPES) + 2))
+    {
+        headerrow = 4;
+    }
+    
+    // Adjust the starting point based on header size
+    int spc = headerrow + 2; // +2 for the separator line and a space
+    
+    // Calculate the maximum number of rows that can be displayed
+    max_rows = maxy - spc - 1;
+
+    // Count the total number of services of the current type
+    for (int i = 0; ; i++) {
+        svc = service_nth(bus, i);
+        if (!svc)
+            break;
+        if (mode == ALL || mode == svc->type)
+            total_services++;
+    }
 
     services_invalidate_ypos(bus);
+
+    // Make sure index_start is not too large
+    if (index_start > 0 && index_start >= total_services - max_rows) {
+        index_start = total_services > max_rows ? total_services - max_rows : 0;
+    }
 
     while (true)
     {
@@ -134,9 +148,39 @@ static void display_services(Bus *bus)
         if (row >= max_rows)
             break;
 
-        row += display_row(svc, row);
+        if (mode != ALL && mode != svc->type)
+        {
+            idx++;
+            continue;
+        }
+
+        if (position == row)
+        {
+            attron(COLOR_PAIR(8));
+            attron(A_BOLD);
+        }
+        else
+        {
+            attroff(COLOR_PAIR(8));
+            attroff(A_BOLD);
+        }
+
+        display_service_row(svc, row, spc);
+        
+        row++;
         idx++;
+        visible_services++;
     }
+    
+    // Make sure the cursor is not outside the visible area
+    if (position >= visible_services && visible_services > 0)
+    {
+        position = visible_services - 1;
+    }
+
+    // Make sure all attributes are reset
+    attroff(COLOR_PAIR(8));
+    attroff(A_BOLD);
 }
 
 /**
@@ -201,7 +245,7 @@ static void display_text_and_lines(Bus *bus)
     attron(COLOR_PAIR(4));
     attron(A_UNDERLINE);
 
-    /* Sets the type count */
+    // Sets the type count
     strncpy(tmptype, service_string_type(mode), 16);
     tmptype[sizeof(tmptype) - 1] = '\0';
     tmptype[0] = toupper(tmptype[0]);
@@ -237,24 +281,43 @@ int display_key_pressed(sd_event_source *s, int fd, uint32_t revents, void *data
     int c;
     char *status = NULL;
     int max_services = 0;
-    int page_scroll = getmaxy(stdscr) - 6;
+    int maxy;
+    int dummy_maxx; // Dummy variable for getmaxyx
+    
+    getmaxyx(stdscr, maxy, dummy_maxx);
+    (void)dummy_maxx; // Mark as deliberately unused
+    
+    int headerrow = 3;
+    struct winsize size;
+    ioctl(STDOUT_FILENO, TIOCGWINSZ, &size);
+    if (size.ws_col < (strlen(D_FUNCTIONS) + strlen(D_SERVICE_TYPES) + 2))
+    {
+        headerrow = 4;
+    }
+    int spc = headerrow + 2; // +2 for the separator line and a space
+    int max_visible_rows = maxy - spc - 1;  // Exact calculation of visible rows
+    int page_scroll = max_visible_rows;  // For Page Up/Down
     bool update_state = false;
-    int maxy = getmaxy(stdscr);
     Service *svc = NULL;
     Bus *bus = (Bus *)data;
 
     if ((revents & (EPOLLHUP | EPOLLERR | EPOLLRDHUP)) > 0)
-        sm_err_set("Error handling input: %s\n", strerror(errno));
+        return 0;
 
-    while ((c = getch()))
-    {
-        if (c == ERR)
-            return 0;
+    c = getch();
 
-        max_services = bus->total_types[mode];
+    // Count the total number of services of the current type
+    for (int i = 0; ; i++) {
+        svc = service_nth(bus, i);
+        if (!svc)
+            break;
+        if (mode == ALL || mode == svc->type)
+            max_services++;
+    }
 
-        switch (tolower(c))
-        {
+    svc = service_nth(bus, position + index_start);
+
+    switch (c) {
         case KEY_ESC:;
             char seq[10] = {0};
             int i = 0, c;
@@ -321,44 +384,47 @@ int display_key_pressed(sd_event_source *s, int fd, uint32_t revents, void *data
             D_OP(bus, svc, RELOAD, "Reload");
             break;
         case KEY_UP:
-            if (position > 0)
+            if (position > 0) {
+                // If position > 0, just move the cursor up
                 position--;
-            else if (index_start > 0)
-            {
+            } else if (index_start > 0) {
+                // If we're at the top edge and there are more entries above, scroll up
                 index_start--;
-                erase();
             }
             break;
 
         case KEY_DOWN:
-            if (position < maxy - 5 && index_start + position < max_services)
+            if (position < max_visible_rows - 1 && position + index_start < max_services - 1) {
+                // If we're not at the bottom edge and there are more entries, move the cursor
                 position++;
-            else if (index_start + position < max_services - 1)
-            {
+            } else if (position + index_start < max_services - 1) {
+                // If we're at the bottom edge and there are more entries, scroll down
                 index_start++;
-                erase();
             }
             break;
 
         case KEY_PPAGE: // Page Up
-            if (index_start > 0)
-            {
+            if (index_start > 0) {
+                // Scroll one page up
                 index_start -= page_scroll;
                 if (index_start < 0)
                     index_start = 0;
                 erase();
             }
-
             position = 0;
             break;
 
         case KEY_NPAGE: // Page Down
-            if (index_start < max_services - page_scroll)
-            {
+            if (index_start + max_visible_rows < max_services) {
+                // Scroll one page down
                 index_start += page_scroll;
-                position = maxy - 6;
+                if (index_start + max_visible_rows > max_services)
+                    index_start = max_services - max_visible_rows;
+                if (index_start < 0)
+                    index_start = 0;
                 erase();
             }
+            position = 0;
             break;
 
         case KEY_LEFT:
@@ -381,10 +447,8 @@ int display_key_pressed(sd_event_source *s, int fd, uint32_t revents, void *data
             break;
 
         case KEY_RETURN:
-            svc = service_ypos(bus, position + 4);
+            svc = service_nth(bus, position + index_start);
             if (!svc)
-                break;
-            if (position < 0)
                 break;
             status = service_status_info(bus, svc);
 
@@ -450,31 +514,28 @@ int display_key_pressed(sd_event_source *s, int fd, uint32_t revents, void *data
             break;
 
         default:
-            continue;
-        }
+            break;
+    }
 
-        if (update_state)
-            bus_update_unit_file_state(bus, svc);
+    if (update_state)
+        bus_update_unit_file_state(bus, svc);
 
-        /* redraw any lines we have invalidated */
-        if (update_state)
+    // Redraw any lines we have invalidated
+    if (update_state)
+    {
+        display_redraw_row(svc);
+        svc->changed = 0;
+    }
+
+    // Make sure we are not going over the end of the list
+    if (index_start + position >= max_services)
+    {
+        if (max_services > 0)
         {
-            display_redraw_row(svc);
-            svc->changed = 0;
-        }
-
-        if (index_start < 0)
-            index_start = 0;
-
-        if (position < 0)
-            position = 0;
-
-        if (index_start + position >= max_services)
-        {
-            if (max_services > maxy - 6)
+            if (max_services > max_visible_rows)
             {
-                index_start = max_services - (maxy - 6);
-                position = maxy - 7;
+                index_start = max_services - max_visible_rows;
+                position = max_visible_rows - 1;
             }
             else
             {
@@ -482,9 +543,17 @@ int display_key_pressed(sd_event_source *s, int fd, uint32_t revents, void *data
                 position = max_services - 1;
             }
         }
-
-        display_redraw(bus);
+        else
+        {
+            index_start = 0;
+            position = 0;
+        }
     }
+
+    // Full redraw of the screen
+    erase();
+    display_redraw(bus);
+    refresh();
 
     return 0;
 }
@@ -518,8 +587,8 @@ void display_redraw(Bus *bus)
  */
 void display_redraw_row(Service *svc)
 {
-    /* If the service is on the screen, invalidate the row so it refreshes
-     * correctly */
+    // If the service is on the screen, invalidate the row so it refreshes
+    // correctly
     int x, y;
 
     if (svc->ypos < 0)

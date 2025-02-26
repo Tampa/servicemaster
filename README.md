@@ -1,4 +1,4 @@
-# ServiceMaster 1.4.5
+# ServiceMaster 1.5.0
 
 ServiceMaster is a powerful terminal-based tool for managing systemd units on Linux systems. It provides an intuitive interface for viewing and controlling system and user units, making it easier to manage your units without leaving the command line.
 
@@ -41,16 +41,11 @@ This project is licensed under the MIT License. See the [LICENSE](LICENSE) file 
 
 Lennart Martens
 
-## Contact
-
-For bug reports, feature requests, or general inquiries:
-- Email: monkeynator78@gmail.com
-
 ## Version
 
-1.4.5
+1.5.0
 
-## Building & Install:
+## Building & Install
 
 ### Dependencies
 
@@ -86,11 +81,10 @@ meson compile -C builddir
 meson install -C builddir
 ```
 
-
-For Archlinux users: There is 'servicemaster-bin' in the AUR.
+## For Archlinux users: There is 'servicemaster-git' (recommended) and 'servicemaster-bin' in the AUR.
 
 ServiceMaster in 'Kitty' terminal and 'Monokai' theme:
-<img src="sm-kitty-monokai.png" alt="SM-screenshot"></img>
+![ss1](sm-kitty-monokai.png)
 ServiceMaster in 'Kgx' standard Gnome terminal emulator:
-<img src="servicemaster.png" alt="SM-screenshot"></img>
-<img src="servicemaster-logo.jpeg" alt="SM-Logo"></img>
+![ss2](servicemaster.png)
+![ss3](servicemaster-logo.jpeg)
