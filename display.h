@@ -34,8 +34,12 @@
         display_status_window(" You must be root for this operation on system units. Press space to toggle: System/User.", "info:");\
         break;\
     }\
-    svc = service_ypos(bus, position + 4);\
-    success = bus_operation(bus, svc, mode);\
+    Service *temp_svc = service_nth(bus, position + index_start);\
+    if (!temp_svc) {\
+        display_status_window("No valid service selected.", "Error:");\
+        break;\
+    }\
+    success = bus_operation(bus, temp_svc, mode);\
     if (!success)\
         display_status_window("Command could not be executed on this unit.", txt":");\
 }
