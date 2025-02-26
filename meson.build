@@ -17,8 +17,11 @@ executable(
     'service.c',
     dependencies: [ncurses_dep, systemd_dep],
     install: true,
-    install_dir: join_paths(get_option('prefix'))
+    install_dir: get_option('bindir'),
 )
 
-# Install the man page using install_man
-install_man('servicemaster.1')
+# Install the man page to the correct location
+install_data(
+    'servicemaster.1',
+    install_dir: join_paths(get_option('mandir'), 'man1')
+)
