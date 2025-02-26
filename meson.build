@@ -17,7 +17,7 @@ executable(
     'service.c',
     dependencies: [ncurses_dep, systemd_dep],
     install: true,
-    install_dir: join_paths(get_option('prefix'), 'bin'),
+    install_dir: join_paths(get_option('prefix'))
 )
 
 # Install the man page using install_man
