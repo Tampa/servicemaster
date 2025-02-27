@@ -16,10 +16,10 @@
 #define D_NAVIGATION     "Left/Right: Modus | Up/Down: Select | Return: Show status"
 #define D_QUIT           "Q/ESC:Quit"
 
-#define D_XLOAD 104
-#define D_XACTIVE 114
-#define D_XSUB 124
-#define D_XDESCRIPTION 134
+#define D_XLOAD 84
+#define D_XACTIVE 94
+#define D_XSUB 104
+#define D_XDESCRIPTION 114
 
 #define D_MODE(m) {\
     position = 0;\
