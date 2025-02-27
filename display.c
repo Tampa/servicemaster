@@ -2,6 +2,7 @@
 #include <ncurses.h>
 #include <errno.h>
 #include <systemd/sd-event.h>
+#include <signal.h>
 #include "sm_err.h"
 #include "service.h"
 #include "display.h"
@@ -236,7 +237,7 @@ static void display_text_and_lines(Bus *bus)
     mvprintw(headerrow, 7, "(%s)", type ? "USER" : "SYSTEM");
     attroff(COLOR_PAIR(4));
 
-    mvprintw(headerrow, 16, "Space: User/System");
+    mvprintw(headerrow, 15, "Space: Usr/Sys");
     mvprintw(headerrow, D_XLOAD, "STATE:");
     mvprintw(headerrow, D_XACTIVE, "ACTIVE:");
     mvprintw(headerrow, D_XSUB, "SUB:");
@@ -610,29 +611,74 @@ void display_set_bus_type(enum bus_type ty)
     type = ty;
 }
 
+// Globale Variablen
+static sd_event *event = NULL;
+static sd_event_source *event_source = NULL;
+
+static void handle_winch(int sig) {
+    (void)sig;
+    Bus *current_bus = bus_currently_displayed();
+    struct winsize size;
+    
+    // Neue Fenstergröße ermitteln
+    ioctl(STDOUT_FILENO, TIOCGWINSZ, &size);
+    
+    // Terminal-Größe aktualisieren
+    resizeterm(size.ws_row, size.ws_col);
+    
+    // Bildschirm neu aufbauen
+    clear();
+    display_redraw(current_bus);
+    refresh();
+}
+
 void display_init(void)
 {
-    int rc = -1;
-    sd_event *ev = NULL;
+    int rc;
     Bus *bus = bus_currently_displayed();
 
-    rc = sd_event_default(&ev);
-    if (rc < 0)
-        sm_err_set("Cannot initialize event loop: %s\n", strerror(-rc));
+    // Signal-Handler für SIGWINCH einrichten
+    struct sigaction sa;
+    memset(&sa, 0, sizeof(sa));
+    sa.sa_handler = handle_winch;
+    sigemptyset(&sa.sa_mask);
+    sa.sa_flags = SA_RESTART;
+    
+    if (sigaction(SIGWINCH, &sa, NULL) == -1) {
+        sm_err_set("Cannot setup window change handler: %s\n", strerror(errno));
+        return;
+    }
 
-    rc = sd_event_add_io(ev,
-                         NULL,
+    // Event-Handler initialisieren
+    rc = sd_event_default(&event);
+    if (rc < 0) {
+        sm_err_set("Cannot initialize event loop: %s\n", strerror(-rc));
+        return;
+    }
+
+    // Event-Source für Tastatureingaben einrichten
+    rc = sd_event_add_io(event,
+                         &event_source,
                          STDIN_FILENO,
                          EPOLLIN,
                          display_key_pressed,
                          bus);
-    if (rc < 0)
+    if (rc < 0) {
         sm_err_set("Cannot initialize event handler: %s\n", strerror(-rc));
+        return;
+    }
+
+    // Event-Source aktivieren
+    rc = sd_event_source_set_enabled(event_source, SD_EVENT_ON);
+    if (rc < 0) {
+        sm_err_set("Cannot enable event source: %s\n", strerror(-rc));
+        return;
+    }
 
     euid = geteuid();
-
     start_time = service_now();
 
+    // Ncurses initialisieren
     initscr();
     raw();
     noecho();
@@ -642,6 +688,7 @@ void display_init(void)
     set_escdelay(0);
     start_color();
 
+    // Farbpaare initialisieren
     init_pair(0, COLOR_BLACK, COLOR_WHITE);
     init_pair(1, COLOR_CYAN, COLOR_BLACK);
     init_pair(2, COLOR_WHITE, COLOR_BLACK);
