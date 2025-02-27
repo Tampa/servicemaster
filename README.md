@@ -52,7 +52,7 @@ Lennart Martens
 #### Archlinux
 
 ```bash
-pacman -S cmake meson ncurses system-libs
+pacman -S cmake meson ncurses systemd-libs
 ```
 
 #### Ubuntu/Debian
