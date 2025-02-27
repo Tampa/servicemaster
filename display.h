@@ -9,7 +9,7 @@
 #define KEY_SPACE 32
 
 #define D_ESCOFF_MS      300000LLU
-#define D_VERSION        "1.5.0"
+#define D_VERSION        "1.5.1"
 #define D_FUNCTIONS      "F1:START F2:STOP F3:RESTART F4:ENABLE F5:DISABLE F6:MASK F7:UNMASK F8:RELOAD"
 #define D_SERVICE_TYPES  "A:ALL D:DEV I:SLICE S:SERVICE O:SOCKET T:TARGET R:TIMER M:MOUNT C:SCOPE N:AMOUNT W:SWAP P:PATH H:SSHOT"
 #define D_HEADLINE       "ServiceMaster "D_VERSION""
@@ -34,8 +34,12 @@
         display_status_window(" You must be root for this operation on system units. Press space to toggle: System/User.", "info:");\
         break;\
     }\
-    svc = service_ypos(bus, position + 4);\
-    success = bus_operation(bus, svc, mode);\
+    Service *temp_svc = service_nth(bus, position + index_start);\
+    if (!temp_svc) {\
+        display_status_window("No valid service selected.", "Error:");\
+        break;\
+    }\
+    success = bus_operation(bus, temp_svc, mode);\
     if (!success)\
         display_status_window("Command could not be executed on this unit.", txt":");\
 }
