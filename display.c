@@ -14,6 +14,8 @@ static enum bus_type type = SYSTEM;
 static int index_start = 0;
 static int position = 0;
 static uid_t euid = INT32_MAX;
+static sd_event *event = NULL;
+static sd_event_source *event_source = NULL;
 
 extern const char **service_str_types;
 
@@ -97,6 +99,16 @@ static void display_service_row(Service *svc, int row, int spc)
     svc->ypos = row + spc;
 }
 
+/**
+ * Displays the list of services on the screen.
+ *
+ * This function is responsible for rendering the list of services,
+ * handling pagination, and applying highlighting to the selected service.
+ * It also manages the display of services based on the current mode and
+ * available screen space.
+ *
+ * @param bus Pointer to the Bus structure containing service information.
+ */
 static void display_services(Bus *bus)
 {
     int max_rows, maxy;
@@ -108,24 +120,26 @@ static void display_services(Bus *bus)
     int visible_services = 0;
     int total_services = 0;
     int dummy_maxx; // Dummy variable for getmaxyx
-    
+
     getmaxyx(stdscr, maxy, dummy_maxx);
     (void)dummy_maxx; // Mark as deliberately unused
-    
+
     ioctl(STDOUT_FILENO, TIOCGWINSZ, &size);
     if (size.ws_col < (strlen(D_FUNCTIONS) + strlen(D_SERVICE_TYPES) + 2))
     {
         headerrow = 4;
     }
     
+
     // Adjust the starting point based on header size
     int spc = headerrow + 2; // +2 for the separator line and a space
-    
+
     // Calculate the maximum number of rows that can be displayed
     max_rows = maxy - spc - 1;
 
     // Count the total number of services of the current type
-    for (int i = 0; ; i++) {
+    for (int i = 0;; i++)
+    {
         svc = service_nth(bus, i);
         if (!svc)
             break;
@@ -136,7 +150,8 @@ static void display_services(Bus *bus)
     services_invalidate_ypos(bus);
 
     // Make sure index_start is not too large
-    if (index_start > 0 && index_start >= total_services - max_rows) {
+    if (index_start > 0 && index_start >= total_services - max_rows)
+    {
         index_start = total_services > max_rows ? total_services - max_rows : 0;
     }
 
@@ -167,12 +182,12 @@ static void display_services(Bus *bus)
         }
 
         display_service_row(svc, row, spc);
-        
+
         row++;
         idx++;
         visible_services++;
     }
-    
+
     // Make sure the cursor is not outside the visible area
     if (position >= visible_services && visible_services > 0)
     {
@@ -284,10 +299,10 @@ int display_key_pressed(sd_event_source *s, int fd, uint32_t revents, void *data
     int max_services = 0;
     int maxy;
     int dummy_maxx; // Dummy variable for getmaxyx
-    
+
     getmaxyx(stdscr, maxy, dummy_maxx);
     (void)dummy_maxx; // Mark as deliberately unused
-    
+
     int headerrow = 3;
     struct winsize size;
     ioctl(STDOUT_FILENO, TIOCGWINSZ, &size);
@@ -295,9 +310,9 @@ int display_key_pressed(sd_event_source *s, int fd, uint32_t revents, void *data
     {
         headerrow = 4;
     }
-    int spc = headerrow + 2; // +2 for the separator line and a space
-    int max_visible_rows = maxy - spc - 1;  // Exact calculation of visible rows
-    int page_scroll = max_visible_rows;  // For Page Up/Down
+    int spc = headerrow + 2;               // +2 for the separator line and a space
+    int max_visible_rows = maxy - spc - 1; // Exact calculation of visible rows
+    int page_scroll = max_visible_rows;    // For Page Up/Down
     bool update_state = false;
     Service *svc = NULL;
     Bus *bus = (Bus *)data;
@@ -308,7 +323,8 @@ int display_key_pressed(sd_event_source *s, int fd, uint32_t revents, void *data
     c = getch();
 
     // Count the total number of services of the current type
-    for (int i = 0; ; i++) {
+    for (int i = 0;; i++)
+    {
         svc = service_nth(bus, i);
         if (!svc)
             break;
@@ -318,204 +334,213 @@ int display_key_pressed(sd_event_source *s, int fd, uint32_t revents, void *data
 
     svc = service_nth(bus, position + index_start);
 
-    switch (c) {
-        case KEY_ESC:;
-            char seq[10] = {0};
-            int i = 0, c;
+    switch (c)
+    {
+    case KEY_ESC:;
+        char seq[10] = {0};
+        int i = 0, c;
 
-            while ((c = getch()) != ERR && i < 9)
-            {
-                seq[i++] = c;
-                if (c == '~')
-                    break;
-            }
-            seq[i] = '\0';
+        while ((c = getch()) != ERR && i < 9)
+        {
+            seq[i++] = c;
+            if (c == '~')
+                break;
+        }
+        seq[i] = '\0';
 
-            if (strcmp(seq, "[11~") == 0)
-            {
-                D_OP(bus, svc, START, "Start");
-            }
-            else if (strcmp(seq, "[12~") == 0)
-            {
-                D_OP(bus, svc, STOP, "Stop");
-            }
-            else if (strcmp(seq, "[13~") == 0)
-            {
-                D_OP(bus, svc, RESTART, "Restart");
-            }
-            else if (strcmp(seq, "[14~") == 0)
-            {
-                D_OP(bus, svc, ENABLE, "Enable");
-                update_state = true;
-            }
-            else
-            {
-                if ((service_now() - start_time) < D_ESCOFF_MS)
-                    break;
-                endwin();
-                exit(EXIT_SUCCESS);
-            }
-            break;
-        case KEY_F(1):
+        if (strcmp(seq, "[11~") == 0)
+        {
             D_OP(bus, svc, START, "Start");
-            break;
-        case KEY_F(2):
+        }
+        else if (strcmp(seq, "[12~") == 0)
+        {
             D_OP(bus, svc, STOP, "Stop");
-            break;
-        case KEY_F(3):
+        }
+        else if (strcmp(seq, "[13~") == 0)
+        {
             D_OP(bus, svc, RESTART, "Restart");
-            break;
-        case KEY_F(4):
+        }
+        else if (strcmp(seq, "[14~") == 0)
+        {
             D_OP(bus, svc, ENABLE, "Enable");
             update_state = true;
-            break;
-        case KEY_F(5):
-            D_OP(bus, svc, DISABLE, "Disable");
-            update_state = true;
-            break;
-        case KEY_F(6):
-            D_OP(bus, svc, MASK, "Mask");
-            update_state = true;
-            break;
-        case KEY_F(7):
-            D_OP(bus, svc, UNMASK, "Unmask");
-            update_state = true;
-            break;
-        case KEY_F(8):
-            D_OP(bus, svc, RELOAD, "Reload");
-            break;
-        case KEY_UP:
-            if (position > 0) {
-                // If position > 0, just move the cursor up
-                position--;
-            } else if (index_start > 0) {
-                // If we're at the top edge and there are more entries above, scroll up
-                index_start--;
-            }
-            break;
-
-        case KEY_DOWN:
-            if (position < max_visible_rows - 1 && position + index_start < max_services - 1) {
-                // If we're not at the bottom edge and there are more entries, move the cursor
-                position++;
-            } else if (position + index_start < max_services - 1) {
-                // If we're at the bottom edge and there are more entries, scroll down
-                index_start++;
-            }
-            break;
-
-        case KEY_PPAGE: // Page Up
-            if (index_start > 0) {
-                // Scroll one page up
-                index_start -= page_scroll;
-                if (index_start < 0)
-                    index_start = 0;
-                erase();
-            }
-            position = 0;
-            break;
-
-        case KEY_NPAGE: // Page Down
-            if (index_start + max_visible_rows < max_services) {
-                // Scroll one page down
-                index_start += page_scroll;
-                if (index_start + max_visible_rows > max_services)
-                    index_start = max_services - max_visible_rows;
-                if (index_start < 0)
-                    index_start = 0;
-                erase();
-            }
-            position = 0;
-            break;
-
-        case KEY_LEFT:
-            if (mode > ALL)
-                D_MODE(mode - 1);
-            break;
-
-        case KEY_RIGHT:
-            if (mode < SNAPSHOT)
-                D_MODE(mode + 1);
-            break;
-
-        case KEY_SPACE:
-            if (bus_system_only())
+        }
+        else
+        {
+            if ((service_now() - start_time) < D_ESCOFF_MS)
                 break;
-            type ^= 0x1;
-            bus = bus_currently_displayed();
-            sd_event_source_set_userdata(s, bus);
-            erase();
-            break;
-
-        case KEY_RETURN:
-            svc = service_nth(bus, position + index_start);
-            if (!svc)
-                break;
-            status = service_status_info(bus, svc);
-
-            display_status_window(status ? status : "No status information available.", "Status:");
-            free(status);
-            break;
-
-        case 'a':
-            D_MODE(ALL);
-            break;
-
-        case 'd':
-            D_MODE(DEVICE);
-            break;
-
-        case 'i':
-            D_MODE(SLICE);
-            break;
-
-        case 's':
-            D_MODE(SERVICE);
-            break;
-
-        case 'o':
-            D_MODE(SOCKET);
-            break;
-
-        case 't':
-            D_MODE(TARGET);
-            break;
-
-        case 'r':
-            D_MODE(TIMER);
-            break;
-
-        case 'm':
-            D_MODE(MOUNT);
-            break;
-
-        case 'c':
-            D_MODE(SCOPE);
-            break;
-
-        case 'n':
-            D_MODE(AUTOMOUNT);
-            break;
-
-        case 'w':
-            D_MODE(SWAP);
-            break;
-
-        case 'p':
-            D_MODE(PATH);
-            break;
-
-        case 'h':
-            D_MODE(SNAPSHOT);
-            break;
-
-        case 'q':
             endwin();
             exit(EXIT_SUCCESS);
-            break;
+        }
+        break;
+    case KEY_F(1):
+        D_OP(bus, svc, START, "Start");
+        break;
+    case KEY_F(2):
+        D_OP(bus, svc, STOP, "Stop");
+        break;
+    case KEY_F(3):
+        D_OP(bus, svc, RESTART, "Restart");
+        break;
+    case KEY_F(4):
+        D_OP(bus, svc, ENABLE, "Enable");
+        update_state = true;
+        break;
+    case KEY_F(5):
+        D_OP(bus, svc, DISABLE, "Disable");
+        update_state = true;
+        break;
+    case KEY_F(6):
+        D_OP(bus, svc, MASK, "Mask");
+        update_state = true;
+        break;
+    case KEY_F(7):
+        D_OP(bus, svc, UNMASK, "Unmask");
+        update_state = true;
+        break;
+    case KEY_F(8):
+        D_OP(bus, svc, RELOAD, "Reload");
+        break;
+    case KEY_UP:
+        if (position > 0)
+        {
+            // If position > 0, just move the cursor up
+            position--;
+        }
+        else if (index_start > 0)
+        {
+            // If we're at the top edge and there are more entries above, scroll up
+            index_start--;
+        }
+        break;
 
-        default:
+    case KEY_DOWN:
+        if (position < max_visible_rows - 1 && position + index_start < max_services - 1)
+        {
+            // If we're not at the bottom edge and there are more entries, move the cursor
+            position++;
+        }
+        else if (position + index_start < max_services - 1)
+        {
+            // If we're at the bottom edge and there are more entries, scroll down
+            index_start++;
+        }
+        break;
+
+    case KEY_PPAGE: // Page Up
+        if (index_start > 0)
+        {
+            // Scroll one page up
+            index_start -= page_scroll;
+            if (index_start < 0)
+                index_start = 0;
+            erase();
+        }
+        position = 0;
+        break;
+
+    case KEY_NPAGE: // Page Down
+        if (index_start + max_visible_rows < max_services)
+        {
+            // Scroll one page down
+            index_start += page_scroll;
+            if (index_start + max_visible_rows > max_services)
+                index_start = max_services - max_visible_rows;
+            if (index_start < 0)
+                index_start = 0;
+            erase();
+        }
+        position = 0;
+        break;
+
+    case KEY_LEFT:
+        if (mode > ALL)
+            D_MODE(mode - 1);
+        break;
+
+    case KEY_RIGHT:
+        if (mode < SNAPSHOT)
+            D_MODE(mode + 1);
+        break;
+
+    case KEY_SPACE:
+        if (bus_system_only())
             break;
+        type ^= 0x1;
+        bus = bus_currently_displayed();
+        sd_event_source_set_userdata(s, bus);
+        erase();
+        break;
+
+    case KEY_RETURN:
+        svc = service_nth(bus, position + index_start);
+        if (!svc)
+            break;
+        status = service_status_info(bus, svc);
+
+        display_status_window(status ? status : "No status information available.", "Status:");
+        free(status);
+        break;
+
+    case 'a':
+        D_MODE(ALL);
+        break;
+
+    case 'd':
+        D_MODE(DEVICE);
+        break;
+
+    case 'i':
+        D_MODE(SLICE);
+        break;
+
+    case 's':
+        D_MODE(SERVICE);
+        break;
+
+    case 'o':
+        D_MODE(SOCKET);
+        break;
+
+    case 't':
+        D_MODE(TARGET);
+        break;
+
+    case 'r':
+        D_MODE(TIMER);
+        break;
+
+    case 'm':
+        D_MODE(MOUNT);
+        break;
+
+    case 'c':
+        D_MODE(SCOPE);
+        break;
+
+    case 'n':
+        D_MODE(AUTOMOUNT);
+        break;
+
+    case 'w':
+        D_MODE(SWAP);
+        break;
+
+    case 'p':
+        D_MODE(PATH);
+        break;
+
+    case 'h':
+        D_MODE(SNAPSHOT);
+        break;
+
+    case 'q':
+        endwin();
+        exit(EXIT_SUCCESS);
+        break;
+
+    default:
+        break;
     }
 
     if (update_state)
@@ -559,16 +584,45 @@ int display_key_pressed(sd_event_source *s, int fd, uint32_t revents, void *data
     return 0;
 }
 
+
+/**
+ * Returns the current bus type.
+ *
+ * This function provides access to the static 'type' variable,
+ * which represents the current bus type (SYSTEM or USER).
+ *
+ * @return The current bus type.
+ */
 enum bus_type display_bus_type(void)
 {
     return type;
 }
 
+/**
+ * Returns the current service type mode.
+ *
+ * This function provides access to the static 'mode' variable,
+ * which represents the current service type filter (ALL, DEVICE, SERVICE, etc.).
+ *
+ * @return The current service type mode.
+ */
 enum service_type display_mode(void)
 {
     return mode;
 }
 
+
+/**
+ * Redraws the entire display with the current bus information.
+ *
+ * This function performs a complete redraw of the screen by:
+ * 1. Displaying all services from the provided bus
+ * 2. Clearing any remaining space below the services list
+ * 3. Drawing the text headers and separator lines
+ * 4. Refreshing the screen to show the changes
+ *
+ * @param bus Pointer to the Bus structure containing services to display
+ */
 void display_redraw(Bus *bus)
 {
     display_services(bus);
@@ -606,71 +660,108 @@ void display_erase(void)
     erase();
 }
 
+/**
+ * Sets the current bus type for the display.
+ *
+ * This function updates the static 'type' variable that determines
+ * whether system or user services are being displayed.
+ *
+ * @param ty The bus type to set (SYSTEM or USER)
+ */
 void display_set_bus_type(enum bus_type ty)
 {
     type = ty;
 }
 
-// Globale Variablen
-static sd_event *event = NULL;
-static sd_event_source *event_source = NULL;
-
-static void handle_winch(int sig) {
+/**
+ * Signal handler for SIGWINCH (window change) events.
+ * 
+ * This function is called when the terminal window is resized. It:
+ * 1. Gets the new terminal dimensions
+ * 2. Resizes the screen buffer to match
+ * 3. Redraws the entire display
+ *
+ * @param sig Signal number (unused)
+ */
+static void handle_winch(int sig)
+{
     (void)sig;
     Bus *current_bus = bus_currently_displayed();
     struct winsize size;
-    
-    // Neue Fenstergröße ermitteln
+
+    // Get the current terminal size
     ioctl(STDOUT_FILENO, TIOCGWINSZ, &size);
-    
-    // Terminal-Größe aktualisieren
+
+    // Terminal size has changed, resize the screen
     resizeterm(size.ws_row, size.ws_col);
-    
-    // Bildschirm neu aufbauen
+
+    // Redraw the screen
     clear();
     display_redraw(current_bus);
     refresh();
 }
 
+/**
+ * Initializes the display and event handling system.
+ * 
+ * This function:
+ * 1. Sets up SIGWINCH handler for terminal window resizing
+ * 2. Initializes systemd event loop and IO event handling
+ * 3. Sets up ncurses display settings
+ * 4. Configures color pairs for the UI
+ * 
+ * The function handles:
+ * - Window resize events through SIGWINCH
+ * - Keyboard input through epoll events
+ * - Basic terminal display settings
+ * - Color definitions for various UI elements
+ * 
+ * Error conditions are handled by setting error messages through sm_err_set()
+ * and returning early if critical initialization fails.
+ */
 void display_init(void)
 {
     int rc;
     Bus *bus = bus_currently_displayed();
 
-    // Signal-Handler für SIGWINCH einrichten
+    // Signal-Handler for SIGWINCH
     struct sigaction sa;
     memset(&sa, 0, sizeof(sa));
     sa.sa_handler = handle_winch;
     sigemptyset(&sa.sa_mask);
     sa.sa_flags = SA_RESTART;
-    
-    if (sigaction(SIGWINCH, &sa, NULL) == -1) {
+
+    if (sigaction(SIGWINCH, &sa, NULL) == -1)
+    {
         sm_err_set("Cannot setup window change handler: %s\n", strerror(errno));
         return;
     }
 
-    // Event-Handler initialisieren
+    // initialize event loop
     rc = sd_event_default(&event);
-    if (rc < 0) {
+    if (rc < 0)
+    {
         sm_err_set("Cannot initialize event loop: %s\n", strerror(-rc));
         return;
     }
 
-    // Event-Source für Tastatureingaben einrichten
+    // initialize event handler
     rc = sd_event_add_io(event,
                          &event_source,
                          STDIN_FILENO,
                          EPOLLIN,
                          display_key_pressed,
                          bus);
-    if (rc < 0) {
+    if (rc < 0)
+    {
         sm_err_set("Cannot initialize event handler: %s\n", strerror(-rc));
         return;
     }
 
-    // Event-Source aktivieren
+    // activate event handler
     rc = sd_event_source_set_enabled(event_source, SD_EVENT_ON);
-    if (rc < 0) {
+    if (rc < 0)
+    {
         sm_err_set("Cannot enable event source: %s\n", strerror(-rc));
         return;
     }
@@ -678,7 +769,7 @@ void display_init(void)
     euid = geteuid();
     start_time = service_now();
 
-    // Ncurses initialisieren
+    // initialize ncurses
     initscr();
     raw();
     noecho();
@@ -688,7 +779,7 @@ void display_init(void)
     set_escdelay(0);
     start_color();
 
-    // Farbpaare initialisieren
+    // initialize colors
     init_pair(0, COLOR_BLACK, COLOR_WHITE);
     init_pair(1, COLOR_CYAN, COLOR_BLACK);
     init_pair(2, COLOR_WHITE, COLOR_BLACK);

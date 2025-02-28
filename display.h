@@ -28,6 +28,20 @@
     clear();\
 }
 
+/**
+ * Macro for performing operations on systemd services with permission and validity checks.
+ *
+ * @param bus      The bus connection to use (system or user)
+ * @param svc      The service to operate on
+ * @param mode     The operation mode (START, STOP, RESTART, etc.)
+ * @param txt      Text description of the operation for error messages
+ *
+ * The macro:
+ * 1. Checks if user has root permissions for system operations
+ * 2. Validates that a service is selected
+ * 3. Attempts to execute the requested operation
+ * 4. Displays appropriate error messages on failure
+ */
 #define D_OP(bus, svc, mode, txt) {\
     bool success = false;\
     if(bus->type == SYSTEM && euid != 0) {\

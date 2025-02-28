@@ -185,6 +185,22 @@ static int bus_unit_property(Bus *bus, const char *object, const char *iface, co
     return rc;
 }
 
+/**
+ * Updates or creates a service entry based on D-Bus message data.
+ *
+ * This function processes a D-Bus message containing systemd unit information and either
+ * updates an existing service entry or creates a new one. It handles:
+ * - Reading unit properties from the D-Bus message
+ * - Creating or updating Service struct fields
+ * - Tracking changes to service properties
+ * - Registering for D-Bus signal notifications for the service
+ * - Adding new services to the service list
+ *
+ * @param reply The D-Bus message containing unit information
+ * @param st The bus state containing the services list
+ * @param now Current timestamp for update tracking
+ * @return 1 if processing succeeded, 0 if no more entries, negative on error
+ */
 static int bus_update_service_entry(sd_bus_message *reply, struct bus_state *st, uint64_t now)
 {
 
@@ -274,6 +290,18 @@ fin:
     return rc;
 }
 
+/**
+ * Retrieves all systemd services/units from the system via D-Bus.
+ *
+ * This function:
+ * 1. Makes a D-Bus call to systemd's ListUnits method
+ * 2. Processes the returned array of unit information
+ * 3. Updates or creates service entries for each unit
+ * 4. Removes services that are no longer present
+ *
+ * @param st Pointer to bus_state structure containing the D-Bus connection
+ * @return 0 on success, negative value on error
+ */
 static int bus_get_all_systemd_services(struct bus_state *st) {
     sd_bus_error error = SD_BUS_ERROR_NULL;
     sd_bus_message *reply = NULL;
@@ -362,6 +390,17 @@ fin:
 }
 
 
+/**
+ * Sets up D-Bus connection and event subscriptions for a systemd bus.
+ *
+ * This function:
+ * 1. Subscribes to systemd D-Bus events using the Manager.Subscribe method
+ * 2. Sets up a signal match for the "Reloading" event from systemd
+ * 3. Registers bus_systemd_reloaded as the callback for reload events
+ *
+ * @param st Pointer to bus_state structure containing the D-Bus connection
+ * @return 0 on success, negative value on error
+ */
 static int bus_setup_bus(struct bus_state *st)
 {
     sd_bus_error error = SD_BUS_ERROR_NULL;
@@ -454,6 +493,23 @@ fin:
     sd_bus_error_free(&error);
 }
 
+/**
+ * Initializes system and user D-Bus connections for systemd communication.
+ *
+ * This function:
+ * 1. Sets up the system-wide systemd D-Bus connection
+ *    - Initializes the bus connection
+ *    - Sets up event handling and subscriptions
+ *    - Fetches initial list of system services
+ *
+ * 2. Sets up the user systemd D-Bus connection (if available)
+ *    - Initializes the bus connection
+ *    - Sets up event handling and subscriptions
+ *    - Fetches initial list of user services
+ *    - Sets system_only flag if user bus is unavailable
+ *
+ * @return 0 on success, negative value on error
+ */
 int bus_init(void)
 {
     int rc = 0;
@@ -527,10 +583,24 @@ fin:
     return rc;
 }
 
+/**
+ * Returns whether only system bus is available.
+ *
+ * @return true if only system bus is available, false if both system and user buses are available
+ */
 bool bus_system_only(void) {
     return system_only;
 }
 
+/**
+ * Returns a pointer to the currently displayed Bus structure.
+ *
+ * Uses display_bus_type() to determine whether the system or user bus
+ * is currently being displayed, and returns the corresponding Bus structure
+ * from the global state array.
+ *
+ * @return Pointer to the currently active Bus structure
+ */
 Bus * bus_currently_displayed(void)
 {
     Bus *bus = &state[display_bus_type()];
@@ -613,6 +683,23 @@ fin:
 }
 
 
+/**
+ * Fetches detailed status information for a systemd unit based on its type.
+ *
+ * This function retrieves various properties from the systemd D-Bus interface
+ * depending on the unit type (service, device, mount, etc.). For each type,
+ * it fetches relevant properties such as:
+ * - Services: PIDs, memory usage, CPU usage, cgroups, etc.
+ * - Devices: sysfs path
+ * - Mounts: mount points and sources
+ * - Timers: next elapse time
+ * - Sockets: IPv6 settings and backlog
+ *
+ * Common properties like invocation ID and fragment path are fetched for all types.
+ *
+ * @param bus The bus connection to use (system or user)
+ * @param svc Pointer to the service structure to populate with fetched data
+ */
 void bus_fetch_service_status(Bus *bus, Service *svc)
 {
     bus_invocation_id(bus, svc);
@@ -660,6 +747,29 @@ void bus_fetch_service_status(Bus *bus, Service *svc)
     }
 }
 
+/**
+ * Performs systemd operations on a service unit via D-Bus.
+ *
+ * Supports the following operations:
+ * - START/STOP/RESTART: Basic unit control
+ * - ENABLE/DISABLE: Unit file enablement
+ * - MASK/UNMASK: Unit masking
+ * - RELOAD: Unit reloading
+ *
+ * For ENABLE/MASK operations:
+ * - Appends unit name and sets runtime=false, force=true flags
+ * 
+ * For DISABLE/UNMASK operations:
+ * - Appends unit name and sets runtime=false flag
+ *
+ * For other operations:
+ * - Uses "replace" mode for unit state changes
+ *
+ * @param bus The D-Bus connection to use
+ * @param svc The service to operate on
+ * @param op The operation to perform
+ * @return 0 on success, negative value on error
+ */
 int bus_operation(Bus *bus, Service *svc, enum operation op) {
     sd_bus_error error = SD_BUS_ERROR_NULL;
     sd_bus_message *reply = NULL, *m = NULL;
