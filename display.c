@@ -129,7 +129,6 @@ static void display_services(Bus *bus)
     {
         headerrow = 4;
     }
-    
 
     // Adjust the starting point based on header size
     int spc = headerrow + 2; // +2 for the separator line and a space
@@ -252,7 +251,6 @@ static void display_text_and_lines(Bus *bus)
     mvprintw(headerrow, 7, "(%s)", type ? "USER" : "SYSTEM");
     attroff(COLOR_PAIR(4));
 
-    mvprintw(headerrow, 15, "Space: Usr/Sys");
     mvprintw(headerrow, D_XLOAD, "STATE:");
     mvprintw(headerrow, D_XACTIVE, "ACTIVE:");
     mvprintw(headerrow, D_XSUB, "SUB:");
@@ -298,10 +296,13 @@ int display_key_pressed(sd_event_source *s, int fd, uint32_t revents, void *data
     char *status = NULL;
     int max_services = 0;
     int maxy;
-    int dummy_maxx; // Dummy variable for getmaxyx
+    int maxx;
 
-    getmaxyx(stdscr, maxy, dummy_maxx);
-    (void)dummy_maxx; // Mark as deliberately unused
+    // Mouse-Reset
+    printf("\033[?1003l\n");
+    mousemask(0, NULL);
+
+    getmaxyx(stdscr, maxy, maxx);
 
     int headerrow = 3;
     struct winsize size;
@@ -333,13 +334,123 @@ int display_key_pressed(sd_event_source *s, int fd, uint32_t revents, void *data
     }
 
     svc = service_nth(bus, position + index_start);
+    set_escdelay(25);
 
     switch (c)
     {
-    case KEY_ESC:;
+    case 'f':
+        char search_query[256] = {0};
+        int win_height = 3, win_width = 80;
+        int starty = (maxy - win_height) / 2;
+        int startx = (maxx - win_width) / 2;
+        Service *found_service = NULL;
+        mode = ALL;
+        update_state = true;
+
+        /* Create a small window to prompt for search text */
+        WINDOW *input_win = newwin(win_height, win_width, starty, startx);
+        box(input_win, 0, 0);
+        mvwprintw(input_win, 1, 1, "Enter search query: ");
+        wrefresh(input_win);
+
+        /* Enable echo and show cursor for user input */
+        echo();
+        curs_set(1);
+        wgetnstr(input_win, search_query, sizeof(search_query) - 1);
+        noecho();
+        curs_set(0);
+        // Nach dem Suchvorgang
+        delwin(input_win);
+        refresh();
+        flushinp();
+
+        // Discard any remaining input
+        while (getch() != ERR)
+            ;
+
+        // Reset start_time
+        start_time = service_now();
+
+        /* If the search query is empty, do nothing */
+        if (strlen(search_query) == 0)
+            break;
+
+        /* Search among all services in the current bus regardless of filter */
+        int overall_index = 0;
+        Service *svc_iter;
+        while ((svc_iter = service_nth(bus, overall_index)) != NULL)
+        {
+            /* Use case-insensitive substring search */
+            if (strcasestr(svc_iter->unit, search_query) != NULL)
+            {
+                found_service = svc_iter;
+                break;
+            }
+            overall_index++;
+        }
+
+        if (found_service)
+        {
+            /* Automatically switch the mode to the found service's type */
+            mode = found_service->type;
+
+            /* Determine the position of the found service in the filtered list */
+            int filtered_index = 0;
+            overall_index = 0;
+            while ((svc_iter = service_nth(bus, overall_index)) != NULL)
+            {
+                if (mode == ALL || svc_iter->type == mode)
+                {
+                    if (svc_iter == found_service)
+                        break;
+                    filtered_index++;
+                }
+                overall_index++;
+            }
+            /* Adjust index_start and position so that the found service is visible */
+            if (filtered_index < max_visible_rows)
+            {
+                index_start = 0;
+                position = filtered_index;
+            }
+            else
+            {
+                index_start = filtered_index - (max_visible_rows - 1);
+                position = max_visible_rows - 1;
+            }
+        }
+        else
+        {
+            /* Display a status window if no matching service is found */
+            display_status_window("No matching service found.", "Search");
+        }
+
+        /* Redraw the entire screen after search */
+        erase();
+        display_redraw(bus);
+        refresh();
+
+        // Reset start_time after search to prevent immediate exit
+        start_time = service_now();
+
+        // Nach der Suche, in display_key_pressed
+        if (max_services == 0)
+        {
+            index_start = 0;
+            position = 0;
+        }
+
+        break;
+
+    case KEY_ESC:
+        nodelay(stdscr, TRUE); // Non-blocking mode
+        int esc_timeout = 50;  // 50ms Timeout für Escape-Sequenzen
+        wtimeout(stdscr, esc_timeout);
+        // Buffer to store escape sequence characters
         char seq[10] = {0};
         int i = 0, c;
 
+        // Read escape sequence characters until ERR or '~' is encountered
         while ((c = getch()) != ERR && i < 9)
         {
             seq[i++] = c;
@@ -348,6 +459,7 @@ int display_key_pressed(sd_event_source *s, int fd, uint32_t revents, void *data
         }
         seq[i] = '\0';
 
+        // Handle different escape sequences for function keys, Some terminals send escape sequences for function keys
         if (strcmp(seq, "[11~") == 0)
         {
             D_OP(bus, svc, START, "Start");
@@ -367,11 +479,13 @@ int display_key_pressed(sd_event_source *s, int fd, uint32_t revents, void *data
         }
         else
         {
+            // Exit if ESC was pressed and enough time has passed since start
             if ((service_now() - start_time) < D_ESCOFF_MS)
                 break;
             endwin();
             exit(EXIT_SUCCESS);
         }
+        nodelay(stdscr, FALSE); // Zurück zum normalen Modus
         break;
     case KEY_F(1):
         D_OP(bus, svc, START, "Start");
@@ -544,13 +658,14 @@ int display_key_pressed(sd_event_source *s, int fd, uint32_t revents, void *data
     }
 
     if (update_state)
-        bus_update_unit_file_state(bus, svc);
-
-    // Redraw any lines we have invalidated
-    if (update_state)
     {
-        display_redraw_row(svc);
-        svc->changed = 0;
+        if (svc != NULL)
+        { // <-- Schutz vor NULL-Zeigern
+            bus_update_unit_file_state(bus, svc);
+            display_redraw_row(svc);
+            svc->changed = 0;
+        }
+        update_state = false; // Zurücksetzen nach Verarbeitung
     }
 
     // Make sure we are not going over the end of the list
@@ -584,7 +699,6 @@ int display_key_pressed(sd_event_source *s, int fd, uint32_t revents, void *data
     return 0;
 }
 
-
 /**
  * Returns the current bus type.
  *
@@ -610,7 +724,6 @@ enum service_type display_mode(void)
 {
     return mode;
 }
-
 
 /**
  * Redraws the entire display with the current bus information.
@@ -675,7 +788,7 @@ void display_set_bus_type(enum bus_type ty)
 
 /**
  * Signal handler for SIGWINCH (window change) events.
- * 
+ *
  * This function is called when the terminal window is resized. It:
  * 1. Gets the new terminal dimensions
  * 2. Resizes the screen buffer to match
@@ -703,19 +816,19 @@ static void handle_winch(int sig)
 
 /**
  * Initializes the display and event handling system.
- * 
+ *
  * This function:
  * 1. Sets up SIGWINCH handler for terminal window resizing
  * 2. Initializes systemd event loop and IO event handling
  * 3. Sets up ncurses display settings
  * 4. Configures color pairs for the UI
- * 
+ *
  * The function handles:
  * - Window resize events through SIGWINCH
  * - Keyboard input through epoll events
  * - Basic terminal display settings
  * - Color definitions for various UI elements
- * 
+ *
  * Error conditions are handled by setting error messages through sm_err_set()
  * and returning early if critical initialization fails.
  */
@@ -778,6 +891,9 @@ void display_init(void)
     nodelay(stdscr, TRUE);
     set_escdelay(0);
     start_color();
+
+    mousemask(ALL_MOUSE_EVENTS | REPORT_MOUSE_POSITION, NULL);
+    printf("\033[?1003h\n"); // Erweiterte Maus-Events aktivieren
 
     // initialize colors
     init_pair(0, COLOR_BLACK, COLOR_WHITE);

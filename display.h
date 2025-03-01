@@ -9,11 +9,11 @@
 #define KEY_SPACE 32
 
 #define D_ESCOFF_MS      300000LLU
-#define D_VERSION        "1.5.1"
+#define D_VERSION        "1.6.0"
 #define D_FUNCTIONS      "F1:START F2:STOP F3:RESTART F4:ENABLE F5:DISABLE F6:MASK F7:UNMASK F8:RELOAD"
 #define D_SERVICE_TYPES  "A:ALL D:DEV I:SLICE S:SERVICE O:SOCKET T:TARGET R:TIMER M:MOUNT C:SCOPE N:AMOUNT W:SWAP P:PATH H:SSHOT"
 #define D_HEADLINE       "ServiceMaster "D_VERSION""
-#define D_NAVIGATION     "Left/Right: Modus | Up/Down: Select | Return: Show status"
+#define D_NAVIGATION     "Left/Right: Modus | Up/Down: Select | Return: Show status | PageUp/Down: Scroll | f: Search | Space: System/User"
 #define D_QUIT           "Q/ESC:Quit"
 
 #define D_XLOAD 84
