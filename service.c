@@ -344,13 +344,11 @@ Service *service_init(const char *name)
 
 /* Return the nth service in the list, accounting for the enabled
  * filter */
-Service *service_nth(Bus *bus, int n)
-{
+Service *service_nth(Bus *bus, int n) {
     int i = 0;
     Service *svc;
 
-    TAILQ_FOREACH(svc, &bus->services, e)
-    {
+    TAILQ_FOREACH(svc, &bus->services, e) {
         if (display_mode() != ALL && svc->type != display_mode())
             continue;
 
@@ -361,7 +359,6 @@ Service *service_nth(Bus *bus, int n)
     }
     return NULL;
 }
-
 /**
  * Finds the service with the specified y-position in the service list.
  *
