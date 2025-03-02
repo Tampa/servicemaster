@@ -1035,44 +1035,56 @@ void d_op(Bus *bus, Service *svc, enum operation mode, const char *txt)
 
     if (bus->type == SYSTEM && euid != 0)
     {
+        // Create a new window with a box
         WINDOW *win = newwin(6, 60, LINES / 2 - 3, COLS / 2 - 30);
         box(win, 0, 0);
 
-        // Aktiviere rote Farbe
-        wattron(win, COLOR_PAIR(3)); // Rot auf Schwarz
+        // Enable red color and bold
+        wattron(win, COLOR_PAIR(3));
         wattron(win, A_BOLD);
 
         mvwprintw(win, 0, 2, "Info:");
         mvwprintw(win, 2, 2, "You must be root for this operation on system units.");
         mvwprintw(win, 3, 2, "Would you like to restart with sudo? (y/n)");
 
-        // Deaktiviere Attribute
+        // Disable bold and red color
         wattroff(win, A_BOLD);
         wattroff(win, COLOR_PAIR(3));
 
         wrefresh(win);
 
-        // Eingabemodus vorbereiten
+        // Clear any remaining input
         flushinp();
         nodelay(stdscr, FALSE);
 
+        // Wait for user input
         int c = wgetch(win);
 
+        // Clean up the window
         delwin(win);
         touchwin(stdscr);
         refresh();
 
         if (c == 'y' || c == 'Y')
         {
+            // End ncurses mode
             endwin();
-            system("reset");
+
+            // Attempt to reset the terminal
+            if (system("reset") != 0)
+                perror("system failed");
 
             char *args[] = {"sudo", program_name, NULL};
-            execvp("sudo", args);
-            perror("execvp failed");
-            exit(EXIT_FAILURE);
+            if (execvp("sudo", args) != 0)
+            {
+                // If execvp fails, print an error message
+                perror("execvp failed");
+                exit(EXIT_FAILURE);
+            }
+            exit(EXIT_SUCCESS);
         }
 
+        // Return to ncurses mode
         nodelay(stdscr, TRUE);
         return;
     }
