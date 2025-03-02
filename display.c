@@ -119,10 +119,10 @@ static void display_services(Bus *bus)
     struct winsize size;
     int visible_services = 0;
     int total_services = 0;
-    int dummy_maxx; // Dummy variable for getmaxyx
+    int dummy_maxx;
 
     getmaxyx(stdscr, maxy, dummy_maxx);
-    (void)dummy_maxx; // Mark as deliberately unused
+    (void)dummy_maxx;
 
     ioctl(STDOUT_FILENO, TIOCGWINSZ, &size);
     if (size.ws_col < (strlen(D_FUNCTIONS) + strlen(D_SERVICE_TYPES) + 2))
@@ -130,13 +130,10 @@ static void display_services(Bus *bus)
         headerrow = 4;
     }
 
-    // Adjust the starting point based on header size
-    int spc = headerrow + 2; // +2 for the separator line and a space
-
-    // Calculate the maximum number of rows that can be displayed
+    int spc = headerrow + 2;
     max_rows = maxy - spc - 1;
 
-    // Count the total number of services of the current type
+    // Zähle zuerst die Services im aktuellen Modus
     for (int i = 0;; i++)
     {
         svc = service_nth(bus, i);
@@ -147,12 +144,6 @@ static void display_services(Bus *bus)
     }
 
     services_invalidate_ypos(bus);
-
-    // Make sure index_start is not too large
-    if (index_start > 0 && index_start >= total_services - max_rows)
-    {
-        index_start = total_services > max_rows ? total_services - max_rows : 0;
-    }
 
     while (true)
     {
@@ -169,33 +160,24 @@ static void display_services(Bus *bus)
             continue;
         }
 
-        if (position == row)
+        if (row == position)
         {
             attron(COLOR_PAIR(8));
             attron(A_BOLD);
         }
-        else
+
+        display_service_row(svc, row, spc);
+
+        if (row == position)
         {
             attroff(COLOR_PAIR(8));
             attroff(A_BOLD);
         }
 
-        display_service_row(svc, row, spc);
-
         row++;
         idx++;
         visible_services++;
     }
-
-    // Make sure the cursor is not outside the visible area
-    if (position >= visible_services && visible_services > 0)
-    {
-        position = visible_services - 1;
-    }
-
-    // Make sure all attributes are reset
-    attroff(COLOR_PAIR(8));
-    attroff(A_BOLD);
 }
 
 /**
@@ -339,109 +321,94 @@ int display_key_pressed(sd_event_source *s, int fd, uint32_t revents, void *data
     switch (c)
     {
     case 'f':
+    {
         char search_query[256] = {0};
         int win_height = 3, win_width = 80;
         int starty = (maxy - win_height) / 2;
         int startx = (maxx - win_width) / 2;
         Service *found_service = NULL;
-        mode = ALL;
-        update_state = true;
+        static bool search_in_progress = false;
 
-        /* Create a small window to prompt for search text */
+        if (search_in_progress)
+            break;
+
+        search_in_progress = true;
+
         WINDOW *input_win = newwin(win_height, win_width, starty, startx);
         box(input_win, 0, 0);
         mvwprintw(input_win, 1, 1, "Enter search query: ");
         wrefresh(input_win);
 
-        /* Enable echo and show cursor for user input */
         echo();
         curs_set(1);
         wgetnstr(input_win, search_query, sizeof(search_query) - 1);
         noecho();
         curs_set(0);
-        // Nach dem Suchvorgang
+
         delwin(input_win);
         refresh();
         flushinp();
 
-        // Discard any remaining input
         while (getch() != ERR)
             ;
 
-        // Reset start_time
-        start_time = service_now();
-
-        /* If the search query is empty, do nothing */
-        if (strlen(search_query) == 0)
+        if (strlen(search_query) == 0) {
+            search_in_progress = false;
             break;
+        }
 
-        /* Search among all services in the current bus regardless of filter */
-        int overall_index = 0;
-        Service *svc_iter;
-        while ((svc_iter = service_nth(bus, overall_index)) != NULL)
-        {
-            /* Use case-insensitive substring search */
-            if (strcasestr(svc_iter->unit, search_query) != NULL)
-            {
+        enum service_type current_mode = mode;
+        mode = ALL;
+        
+        for (int i = 0;; i++) {
+            Service *svc_iter = service_nth(bus, i);
+            if (!svc_iter)
+                break;
+            
+            if (strcasestr(svc_iter->unit, search_query) != NULL) {
                 found_service = svc_iter;
                 break;
             }
-            overall_index++;
         }
 
-        if (found_service)
-        {
-            /* Automatically switch the mode to the found service's type */
+        if (found_service) {
             mode = found_service->type;
-
-            /* Determine the position of the found service in the filtered list */
-            int filtered_index = 0;
-            overall_index = 0;
-            while ((svc_iter = service_nth(bus, overall_index)) != NULL)
-            {
-                if (mode == ALL || svc_iter->type == mode)
-                {
-                    if (svc_iter == found_service)
+            int filtered_pos = 0;
+            
+            for (int i = 0;; i++) {
+                Service *svc = service_nth(bus, i);
+                if (!svc)
+                    break;
+                
+                if (svc->type == mode) {
+                    if (svc == found_service) {
+                        if (filtered_pos >= max_visible_rows) {
+                            index_start = filtered_pos - max_visible_rows + 1;
+                            position = max_visible_rows - 1;
+                        } else {
+                            index_start = 0;
+                            position = filtered_pos;
+                        }
                         break;
-                    filtered_index++;
+                    }
+                    filtered_pos++;
                 }
-                overall_index++;
             }
-            /* Adjust index_start and position so that the found service is visible */
-            if (filtered_index < max_visible_rows)
-            {
-                index_start = 0;
-                position = filtered_index;
-            }
-            else
-            {
-                index_start = filtered_index - (max_visible_rows - 1);
-                position = max_visible_rows - 1;
-            }
-        }
-        else
-        {
-            /* Display a status window if no matching service is found */
+            
+            // Komplettes Display neu zeichnen
+            clear();
+            display_services(bus);      // Services zeichnen
+            display_text_and_lines(bus); // Header und Linien zeichnen
+            refresh();
+        } else {
+            mode = current_mode;
             display_status_window("No matching service found.", "Search");
         }
 
-        /* Redraw the entire screen after search */
-        erase();
-        display_redraw(bus);
-        refresh();
-
-        // Reset start_time after search to prevent immediate exit
+        search_in_progress = false;
         start_time = service_now();
-
-        // Nach der Suche, in display_key_pressed
-        if (max_services == 0)
-        {
-            index_start = 0;
-            position = 0;
-        }
-
-        break;
-
+        return 0;
+    }
     case KEY_ESC:
         nodelay(stdscr, TRUE); // Non-blocking mode
         int esc_timeout = 50;  // 50ms Timeout für Escape-Sequenzen
