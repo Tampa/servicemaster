@@ -280,7 +280,7 @@ int display_key_pressed(sd_event_source *s, int fd, uint32_t revents, void *data
     int maxy;
     int maxx;
 
-    // Mouse-Reset
+    // Mouse reset
     printf("\033[?1003l\n");
     mousemask(0, NULL);
 
@@ -320,32 +320,68 @@ int display_key_pressed(sd_event_source *s, int fd, uint32_t revents, void *data
 
     switch (c)
     {
-    case 'f': // Search functionality
+    case 'f': // Search function
     {
-        // Variables for search window dimensions and positioning
-        char search_query[256] = {0};
+        Service *found_service = NULL;
+        int max_input_length = 50;   // Internal buffer (can be longer than the window)
+        char search_query[51] = {0}; // Space for 50 characters + null termination
         int win_height = 3, win_width = 80;
         int starty = (maxy - win_height) / 2;
         int startx = (maxx - win_width) / 2;
-        Service *found_service = NULL;
-        static bool search_in_progress = false; // Prevents multiple concurrent searches
+        int cursor = 0; // Current position in search_query
+        int ch;
+        static bool search_in_progress = false;
 
-        // Prevent nested searches
         if (search_in_progress)
             break;
-
         search_in_progress = true;
 
-        // Create and display search input window
         WINDOW *input_win = newwin(win_height, win_width, starty, startx);
         box(input_win, 0, 0);
-        mvwprintw(input_win, 1, 1, "Enter search query: ");
+        // Information line in window, show maximum length:
+        mvwprintw(input_win, 1, 1, "Search unit: ");
         wrefresh(input_win);
 
-        // Enable text input and show cursor
-        echo();
+        echo(); // Show characters directly (optional, since we render ourselves)
         curs_set(1);
-        wgetnstr(input_win, search_query, sizeof(search_query) - 1);
+        // Switch the key input mode to non-blocking input field
+        keypad(input_win, TRUE);
+
+        // We only show the part of the input that fits in the window.
+        // Assume the visible area starts after displaying the static characters.
+        int offset = 1 + strlen("Search unit: ");
+        // How many characters fit in the visible area?
+        int visible_length = win_width - offset - 2; // 2 for border
+
+        // Process character-by-character input
+        while ((ch = wgetch(input_win)) != KEY_RETURN)
+        {
+            if ((ch == KEY_BACKSPACE || ch == 127) && cursor > 0)
+            {
+                cursor--;
+                search_query[cursor] = '\0';
+            }
+            else if (cursor < max_input_length && ch >= 32 && ch <= 126)
+            {
+                search_query[cursor++] = ch;
+                search_query[cursor] = '\0';
+            }
+            // Rendering: We calculate the start index so that if the input is longer than visible_length,
+            // only the last visible_length characters are displayed.
+            int start_index = 0;
+            if (cursor > visible_length)
+                start_index = cursor - visible_length;
+
+            // Clear the input area
+            for (int i = offset; i < win_width - 1; i++)
+            {
+                mvwaddch(input_win, 1, i, ' ');
+            }
+            // Display the visible part of the input
+            mvwprintw(input_win, 1, offset, "%s", &search_query[start_index]);
+            wmove(input_win, 1, offset + ((cursor > visible_length) ? visible_length : cursor));
+            wrefresh(input_win);
+        }
         noecho();
         curs_set(0);
 
@@ -421,14 +457,17 @@ int display_key_pressed(sd_event_source *s, int fd, uint32_t revents, void *data
             clear();
             display_services(bus);
             display_text_and_lines(bus);
-            refresh();
         }
         else
         {
             // Restore previous mode if no service found
             mode = current_mode;
             display_status_window("No matching service found.", "Search");
+            clear();
+            display_services(bus);
+            display_text_and_lines(bus);
         }
+        refresh();
 
         // Reset search state and update start time
         search_in_progress = false;
@@ -437,7 +476,7 @@ int display_key_pressed(sd_event_source *s, int fd, uint32_t revents, void *data
     }
     case KEY_ESC:
         nodelay(stdscr, TRUE); // Non-blocking mode
-        int esc_timeout = 50;  // 50ms Timeout für Escape-Sequenzen
+        int esc_timeout = 50;  // 50ms Timeout for Escape sequences
         wtimeout(stdscr, esc_timeout);
         // Buffer to store escape sequence characters
         char seq[10] = {0};
@@ -478,7 +517,7 @@ int display_key_pressed(sd_event_source *s, int fd, uint32_t revents, void *data
             endwin();
             exit(EXIT_SUCCESS);
         }
-        nodelay(stdscr, FALSE); // Zurück zum normalen Modus
+        nodelay(stdscr, FALSE); // back to normal mode
         break;
     case KEY_F(1):
         d_op(bus, svc, START, "Start");
@@ -654,12 +693,12 @@ int display_key_pressed(sd_event_source *s, int fd, uint32_t revents, void *data
     if (update_state)
     {
         if (svc != NULL)
-        { // <-- Schutz vor NULL-Zeigern
+        { // NULL pointer protection
             bus_update_unit_file_state(bus, svc);
             display_redraw_row(svc);
             svc->changed = 0;
         }
-        update_state = false; // Zurücksetzen nach Verarbeitung
+        update_state = false; // reset after processing
     }
 
     // Make sure we are not going over the end of the list
@@ -735,7 +774,7 @@ void display_redraw(Bus *bus)
     struct winsize size;
     ioctl(STDOUT_FILENO, TIOCGWINSZ, &size);
 
-    // Erstelle den Headline-Text mit root-Markierung
+    // Create the headline text with root marking
     char headline[100];
     snprintf(headline, sizeof(headline), "%s%s%s",
              D_HEADLINE,
@@ -745,10 +784,10 @@ void display_redraw(Bus *bus)
     mvaddstr(1, 1, headline);
     if (geteuid() == 0)
     {
-        // Position direkt nach dem bereits geschriebenen Text
+        // Position directly after the already written text
         int root_pos = 1 + strlen(D_HEADLINE) + 1;
         move(1, root_pos);
-        attron(COLOR_PAIR(3) | A_BOLD); // Rot und fett
+        attron(COLOR_PAIR(3) | A_BOLD); // Red and bold
         printw("(root)");
         attroff(COLOR_PAIR(3) | A_BOLD);
     }
@@ -908,7 +947,7 @@ void display_init(void)
     start_color();
 
     mousemask(ALL_MOUSE_EVENTS | REPORT_MOUSE_POSITION, NULL);
-    printf("\033[?1003h\n"); // Erweiterte Maus-Events aktivieren
+    printf("\033[?1003h\n"); // Extended mouse events enabled
 
     // initialize colors
     init_pair(0, COLOR_BLACK, COLOR_WHITE);
@@ -1072,13 +1111,13 @@ void d_op(Bus *bus, Service *svc, enum operation mode, const char *txt)
 
             // Attempt to reset the terminal
             if (system("reset") != 0)
-                perror("system failed");
+                perror("system reset failed");
 
             char *args[] = {"sudo", program_name, NULL};
             if (execvp("sudo", args) != 0)
             {
                 // If execvp fails, print an error message
-                perror("execvp failed");
+                perror("execvp failed to execute sudo");
                 exit(EXIT_FAILURE);
             }
             exit(EXIT_SUCCESS);

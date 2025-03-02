@@ -16,7 +16,7 @@ static void show_welcome_message()
         "SECURITY GUIDELINE:\n"
         "- Only root can manage system services\n"
         "- Regular users can only manage their own user services\n\n"
-        "Press ENTER to continue...";
+        "Press any key to continue...";
 
     display_status_window(welcome_text, "ServiceMaster " D_VERSION);
 }
