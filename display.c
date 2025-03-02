@@ -320,7 +320,7 @@ int display_key_pressed(sd_event_source *s, int fd, uint32_t revents, void *data
 
     switch (c)
     {
-    case 'f':  // Search functionality
+    case 'f': // Search functionality
     {
         // Variables for search window dimensions and positioning
         char search_query[256] = {0};
@@ -328,7 +328,7 @@ int display_key_pressed(sd_event_source *s, int fd, uint32_t revents, void *data
         int starty = (maxy - win_height) / 2;
         int startx = (maxx - win_width) / 2;
         Service *found_service = NULL;
-        static bool search_in_progress = false;  // Prevents multiple concurrent searches
+        static bool search_in_progress = false; // Prevents multiple concurrent searches
 
         // Prevent nested searches
         if (search_in_progress)
@@ -573,43 +573,7 @@ int display_key_pressed(sd_event_source *s, int fd, uint32_t revents, void *data
     case KEY_SPACE:
         if (bus_system_only())
             break;
-        if (euid == 0) {  // Wenn wir im root-Modus sind
-            WINDOW *win = newwin(6, 60, LINES/2 - 3, COLS/2 - 30);
-            box(win, 0, 0);
-            
-            wattron(win, COLOR_PAIR(3));  // Rot auf Schwarz
-            wattron(win, A_BOLD);
-            
-            mvwprintw(win, 0, 2, "Info:");
-            mvwprintw(win, 2, 2, "Switch to user mode?");
-            mvwprintw(win, 3, 2, "Would you like to restart without sudo? (y/n)");
-            
-            wattroff(win, A_BOLD);
-            wattroff(win, COLOR_PAIR(3));
-            
-            wrefresh(win);
-            
-            flushinp();
-            nodelay(stdscr, FALSE);
-            
-            int c = wgetch(win);
-            
-            delwin(win);
-            touchwin(stdscr);
-            refresh();
-            
-            if (c == 'y' || c == 'Y') {
-                endwin();
-                system("reset");
-                
-                execl(program_name, program_name, NULL);
-                perror("execl failed");
-                exit(EXIT_FAILURE);
-            }
-            
-            nodelay(stdscr, TRUE);
-            return 0;
-        }
+
         type ^= 0x1;
         bus = bus_currently_displayed();
         sd_event_source_set_userdata(s, bus);
@@ -770,20 +734,21 @@ void display_redraw(Bus *bus)
 {
     struct winsize size;
     ioctl(STDOUT_FILENO, TIOCGWINSZ, &size);
-    
+
     // Erstelle den Headline-Text mit root-Markierung
     char headline[100];
-    snprintf(headline, sizeof(headline), "%s%s%s", 
+    snprintf(headline, sizeof(headline), "%s%s%s",
              D_HEADLINE,
              (geteuid() == 0) ? " " : "",
              (geteuid() == 0) ? "(root)" : "");
 
     mvaddstr(1, 1, headline);
-    if (geteuid() == 0) {
+    if (geteuid() == 0)
+    {
         // Position direkt nach dem bereits geschriebenen Text
         int root_pos = 1 + strlen(D_HEADLINE) + 1;
         move(1, root_pos);
-        attron(COLOR_PAIR(3) | A_BOLD);  // Rot und fett
+        attron(COLOR_PAIR(3) | A_BOLD); // Rot und fett
         printw("(root)");
         attroff(COLOR_PAIR(3) | A_BOLD);
     }
@@ -1063,60 +1028,65 @@ void display_status_window(const char *status, const char *title)
     refresh();
 }
 
-void d_op(Bus *bus, Service *svc, enum operation mode, const char *txt) {
+void d_op(Bus *bus, Service *svc, enum operation mode, const char *txt)
+{
     (void)svc;
     bool success = false;
-    
-    if(bus->type == SYSTEM && euid != 0) {
-        WINDOW *win = newwin(6, 60, LINES/2 - 3, COLS/2 - 30);
+
+    if (bus->type == SYSTEM && euid != 0)
+    {
+        WINDOW *win = newwin(6, 60, LINES / 2 - 3, COLS / 2 - 30);
         box(win, 0, 0);
-        
+
         // Aktiviere rote Farbe
-        wattron(win, COLOR_PAIR(3));  // Rot auf Schwarz
+        wattron(win, COLOR_PAIR(3)); // Rot auf Schwarz
         wattron(win, A_BOLD);
-        
+
         mvwprintw(win, 0, 2, "Info:");
         mvwprintw(win, 2, 2, "You must be root for this operation on system units.");
         mvwprintw(win, 3, 2, "Would you like to restart with sudo? (y/n)");
-        
+
         // Deaktiviere Attribute
         wattroff(win, A_BOLD);
         wattroff(win, COLOR_PAIR(3));
-        
+
         wrefresh(win);
-        
+
         // Eingabemodus vorbereiten
         flushinp();
         nodelay(stdscr, FALSE);
-        
+
         int c = wgetch(win);
-        
+
         delwin(win);
         touchwin(stdscr);
         refresh();
-        
-        if (c == 'y' || c == 'Y') {
+
+        if (c == 'y' || c == 'Y')
+        {
             endwin();
             system("reset");
-            
+
             char *args[] = {"sudo", program_name, NULL};
             execvp("sudo", args);
             perror("execvp failed");
             exit(EXIT_FAILURE);
         }
-        
+
         nodelay(stdscr, TRUE);
         return;
     }
-    
+
     Service *temp_svc = service_nth(bus, position + index_start);
-    if (!temp_svc) {
+    if (!temp_svc)
+    {
         display_status_window("No valid service selected.", "Error:");
         return;
     }
-    
+
     success = bus_operation(bus, temp_svc, mode);
-    if (!success) {
+    if (!success)
+    {
         display_status_window("Command could not be executed on this unit.", txt);
     }
 }
