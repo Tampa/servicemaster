@@ -320,72 +320,94 @@ int display_key_pressed(sd_event_source *s, int fd, uint32_t revents, void *data
 
     switch (c)
     {
-    case 'f':
+    case 'f':  // Search functionality
     {
+        // Variables for search window dimensions and positioning
         char search_query[256] = {0};
         int win_height = 3, win_width = 80;
         int starty = (maxy - win_height) / 2;
         int startx = (maxx - win_width) / 2;
         Service *found_service = NULL;
-        static bool search_in_progress = false;
+        static bool search_in_progress = false;  // Prevents multiple concurrent searches
 
+        // Prevent nested searches
         if (search_in_progress)
             break;
 
         search_in_progress = true;
 
+        // Create and display search input window
         WINDOW *input_win = newwin(win_height, win_width, starty, startx);
         box(input_win, 0, 0);
         mvwprintw(input_win, 1, 1, "Enter search query: ");
         wrefresh(input_win);
 
+        // Enable text input and show cursor
         echo();
         curs_set(1);
         wgetnstr(input_win, search_query, sizeof(search_query) - 1);
         noecho();
         curs_set(0);
 
+        // Clean up input window
         delwin(input_win);
         refresh();
         flushinp();
 
+        // Clear any remaining input
         while (getch() != ERR)
             ;
 
-        if (strlen(search_query) == 0) {
+        // Exit search if query is empty
+        if (strlen(search_query) == 0)
+        {
             search_in_progress = false;
             break;
         }
 
+        // Store current mode and switch to ALL to search across all services
         enum service_type current_mode = mode;
         mode = ALL;
-        
-        for (int i = 0;; i++) {
+
+        // Search for service matching query
+        for (int i = 0;; i++)
+        {
             Service *svc_iter = service_nth(bus, i);
             if (!svc_iter)
                 break;
-            
-            if (strcasestr(svc_iter->unit, search_query) != NULL) {
+
+            if (strcasestr(svc_iter->unit, search_query) != NULL)
+            {
                 found_service = svc_iter;
                 break;
             }
         }
 
-        if (found_service) {
+        if (found_service)
+        {
+            // Switch to found service's type
             mode = found_service->type;
             int filtered_pos = 0;
-            
-            for (int i = 0;; i++) {
+
+            // Calculate position of found service in filtered list
+            for (int i = 0;; i++)
+            {
                 Service *svc = service_nth(bus, i);
                 if (!svc)
                     break;
-                
-                if (svc->type == mode) {
-                    if (svc == found_service) {
-                        if (filtered_pos >= max_visible_rows) {
+
+                if (svc->type == mode)
+                {
+                    if (svc == found_service)
+                    {
+                        // Adjust scroll position to show found service
+                        if (filtered_pos >= max_visible_rows)
+                        {
                             index_start = filtered_pos - max_visible_rows + 1;
                             position = max_visible_rows - 1;
-                        } else {
+                        }
+                        else
+                        {
                             index_start = 0;
                             position = filtered_pos;
                         }
@@ -394,17 +416,21 @@ int display_key_pressed(sd_event_source *s, int fd, uint32_t revents, void *data
                     filtered_pos++;
                 }
             }
-            
-            // Komplettes Display neu zeichnen
+
+            // Redraw display with found service
             clear();
-            display_services(bus);      // Services zeichnen
-            display_text_and_lines(bus); // Header und Linien zeichnen
+            display_services(bus);
+            display_text_and_lines(bus);
             refresh();
-        } else {
+        }
+        else
+        {
+            // Restore previous mode if no service found
             mode = current_mode;
             display_status_window("No matching service found.", "Search");
         }
 
+        // Reset search state and update start time
         search_in_progress = false;
         start_time = service_now();
         return 0;
