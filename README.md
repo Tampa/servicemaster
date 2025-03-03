@@ -1,4 +1,4 @@
-# ServiceMaster 1.6.1
+# ServiceMaster 1.6.5
 
 ServiceMaster is a powerful terminal-based tool for managing systemd units on Linux systems. It provides an intuitive interface for viewing and controlling system and user units, making it easier to manage your units without leaving the command line.
 
@@ -12,6 +12,7 @@ ServiceMaster is a powerful terminal-based tool for managing systemd units on Li
 - Keyboard shortcuts for quick navigation and control
 - DBus event loop: Reacts immediately to external changes to units
 - Search for units by name
+- Switch between colorschemes
 
 ## Requirements
 
@@ -29,6 +30,7 @@ After launching ServiceMaster, you can use the following controls:
 - F1-F8: Perform actions (start, stop, restart, etc.) on the selected unit
 - a-z: Quick filter units by type
 - q or ESC: Quit the application
+- +,-: Switch between colorschemes
 - f: Search for units by name
 
 ## CLI Options
@@ -36,6 +38,8 @@ After launching ServiceMaster, you can use the following controls:
 - `-v:` Display the version information and exit
 - `-w:` Do not show the welcome message
 - `-h:` Display help / usage message and exit
+- `-c:` Set the colorscheme
+- `-l:` List all available colorschemes
 
 ## Security Note
 
@@ -51,7 +55,7 @@ Lennart Martens
 
 ## Version
 
-1.6.1 (2025)
+1.6.5 (2025)
 
 ## Building & Install
 
@@ -95,13 +99,27 @@ meson install -C builddir
 
 (I'm not the maintainer of the -bin version)
 
-### Screenshots
+### Screenshots with different colorschemes
 
-ServiceMaster in 'kgx' standard Gnome terminal emulator:
-![ss1](gnome_ss.png)
-ServiceMaster in 'Kitty' terminal and 'gruvbox-dark' theme:
-![ss2](kitty_ss.png)
+Default:
+![default](screenshots/default.png)
+Nord:
+![nord](screenshots/nord.png)
+Solarized Dark:
+![solarizeddark](screenshots/solarizeddark.png)
+Dracula:
+![dracula](screenshots/dracula.png)
+Monokai:
+![monokai](screenshots/monokai.png)
+Gruvbox Dark:
+![gruvboxdark](screenshots/gruvboxdark.png)
+One Dark:
+![onedark](screenshots/onedark.png)
+Monochrome:
+![monochrome](screenshots/monochrome.png)
+Solarized Light:
+![solarizedlight](screenshots/solarizedlight.png)
 
 ### Logo
 
-![ss3](servicemaster-logo.jpeg)
+![logo](servicemaster-logo.jpeg)

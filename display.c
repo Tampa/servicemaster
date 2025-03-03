@@ -17,10 +17,178 @@ static uid_t euid = INT32_MAX;
 static sd_event *event = NULL;
 static sd_event_source *event_source = NULL;
 
+colorscheme_t colorscheme = DEFAULT;
+
+// Some nice colorschemes for the tui
+static char *colors[] = {"default", "nord", "solarizeddark", "dracula", "monokai", "gruvboxdark", "onedark", "monochrome", "solarizedlight"};
+
 extern const char **service_str_types;
+
+// Convert RGB value to ncurses color value
+static short rgb_to_ncurses(short value)
+{
+    return (short)((value * 1000) / 255);
+}
+
+static const ColorScheme THEMES[] = {
+    {.name = "default", // DEFAULT = 0
+     .colors = {
+         {0, 0, 0},
+         {0, 0, 0},
+         {0, 0, 0},
+         {0, 0, 0},
+         {0, 0, 0},
+         {0, 0, 0},
+         {0, 0, 0},
+         {0, 0, 0}}},
+    {.name = "nord", // NORD = 1
+     .colors = {
+         {46, 52, 64},    // COLOR_BLACK  - Polar Night
+         {191, 97, 106},  // COLOR_RED    - Aurora Red
+         {163, 190, 140}, // COLOR_GREEN  - Aurora Green
+         {235, 203, 139}, // COLOR_YELLOW - Aurora Yellow
+         {94, 129, 172},  // COLOR_BLUE   - Frost Blue
+         {143, 188, 187}, // COLOR_MAGENTA - Frost Cyan
+         {136, 192, 208}, // COLOR_CYAN   - Frost Ice
+         {216, 222, 233}  // COLOR_WHITE  - Snow Storm
+     }},
+    {.name = "solarizeddark", // SOLARIZEDDARK = 2
+     .colors = {
+         {0, 43, 54},    // COLOR_BLACK  - Base03
+         {220, 50, 47},  // COLOR_RED    - Red
+         {133, 153, 0},  // COLOR_GREEN  - Green
+         {181, 137, 0},  // COLOR_YELLOW - Yellow
+         {38, 139, 210}, // COLOR_BLUE   - Blue
+         {211, 54, 130}, // COLOR_MAGENTA - Magenta
+         {42, 161, 152}, // COLOR_CYAN   - Cyan
+         {238, 232, 213} // COLOR_WHITE  - Base2
+     }},
+    {.name = "dracula", // DRACULA = 3
+     .colors = {
+         {40, 42, 54},    // COLOR_BLACK  - Background
+         {255, 85, 85},   // COLOR_RED    - Red
+         {80, 250, 123},  // COLOR_GREEN  - Green
+         {241, 250, 140}, // COLOR_YELLOW - Yellow
+         {189, 147, 249}, // COLOR_BLUE   - Purple
+         {255, 121, 198}, // COLOR_MAGENTA - Pink
+         {139, 233, 253}, // COLOR_CYAN   - Cyan
+         {248, 248, 242}  // COLOR_WHITE  - Foreground
+     }},
+    {.name = "monokai", // MONOKAI = 4
+     .colors = {
+         {39, 40, 34},    // COLOR_BLACK  - Background
+         {249, 38, 114},  // COLOR_RED    - Red
+         {166, 226, 46},  // COLOR_GREEN  - Green
+         {253, 151, 31},  // COLOR_YELLOW - Yellow
+         {102, 217, 239}, // COLOR_BLUE   - Blue
+         {174, 129, 255}, // COLOR_MAGENTA - Magenta
+         {137, 221, 255}, // COLOR_CYAN   - Cyan
+         {248, 248, 242}  // COLOR_WHITE  - Foreground
+     }},
+    {.name = "gruvboxdark", // GRUVBOXDARK = 5
+     .colors = {
+         {29, 32, 33},    // COLOR_BLACK  - Background
+         {204, 36, 29},   // COLOR_RED    - Red
+         {152, 151, 26},  // COLOR_GREEN  - Green
+         {215, 153, 33},  // COLOR_YELLOW - Yellow
+         {69, 133, 136},  // COLOR_BLUE   - Blue
+         {177, 98, 134},  // COLOR_MAGENTA - Magenta
+         {104, 157, 106}, // COLOR_CYAN   - Cyan
+         {235, 219, 178}  // COLOR_WHITE  - Foreground
+     }},
+    {.name = "onedark", // ONEDARK = 6
+     .colors = {
+         {40, 44, 52},    // COLOR_BLACK  - Background
+         {224, 108, 117}, // COLOR_RED    - Red
+         {152, 195, 121}, // COLOR_GREEN  - Green
+         {229, 192, 123}, // COLOR_YELLOW - Yellow
+         {97, 175, 239},  // COLOR_BLUE   - Blue
+         {198, 120, 221}, // COLOR_MAGENTA - Magenta
+         {86, 182, 194},  // COLOR_CYAN   - Cyan
+         {171, 178, 191}  // COLOR_WHITE  - Foreground
+     }},
+    {.name = "monochrome", // MONOCHROME = 7
+     .colors = {
+         {0, 0, 0},       // COLOR_BLACK  - Black
+         {64, 64, 64},    // COLOR_RED    - Dark Gray
+         {128, 128, 128}, // COLOR_GREEN  - Gray
+         {192, 192, 192}, // COLOR_YELLOW - Light Gray
+         {255, 255, 255}, // COLOR_BLUE   - White
+         {128, 128, 128}, // COLOR_MAGENTA - Gray
+         {192, 192, 192}, // COLOR_CYAN   - Light Gray
+         {255, 255, 255}  // COLOR_WHITE  - White
+     }},
+    {.name = "solarizedlight", // SOLARIZEDLIGHT = 8
+     .colors = {
+         {0, 43, 54},    // COLOR_BLACK  - Base03
+         {220, 50, 47},  // COLOR_RED    - Red
+         {133, 153, 0},  // COLOR_GREEN  - Green
+         {181, 137, 0},  // COLOR_YELLOW - Yellow
+         {38, 139, 210}, // COLOR_BLUE   - Blue
+         {211, 54, 130}, // COLOR_MAGENTA - Magenta
+         {42, 161, 152}, // COLOR_CYAN   - Cyan
+         {238, 232, 213} // COLOR_WHITE  - Base2
+     }}};
+
+// Set the color scheme
+void set_color_scheme(colorscheme_t scheme)
+{
+    if (scheme >= sizeof(THEMES) / sizeof(THEMES[0])) // Invalid scheme
+    {
+        return;
+    }
+
+    init_pair(0, COLOR_BLACK, COLOR_WHITE);
+    init_pair(1, COLOR_CYAN, COLOR_BLACK);
+    init_pair(2, COLOR_WHITE, COLOR_BLACK);
+    init_pair(3, COLOR_RED, COLOR_BLACK);
+    init_pair(4, COLOR_GREEN, COLOR_BLACK);
+    init_pair(5, COLOR_YELLOW, COLOR_BLACK);
+    init_pair(6, COLOR_BLUE, COLOR_BLACK);
+    init_pair(7, COLOR_MAGENTA, COLOR_BLACK);
+    init_pair(8, COLOR_WHITE, COLOR_BLUE);
+    init_pair(9, COLOR_WHITE, COLOR_RED);
+    init_pair(10, COLOR_BLACK, COLOR_GREEN);
+    init_pair(11, COLOR_RED, COLOR_YELLOW);
+}
 
 // Forward declaration of display_service_row
 static void display_service_row(Service *svc, int row, int spc);
+
+static void apply_color_scheme(const ColorScheme *scheme)
+{
+    if (!can_change_color())
+    {
+        endwin();
+        printf("Your terminal does not support custom colors.\n");
+        exit(EXIT_FAILURE);
+    }
+
+    // If "default" is selected, reset the original colors
+    if (strcmp(scheme->name, "default") == 0)
+    {
+        // Reset the original terminal colors
+        init_color(COLOR_BLACK,   0,   0,   0);
+        init_color(COLOR_RED,     1000,0,   0);
+        init_color(COLOR_GREEN,   0,   1000,0);
+        init_color(COLOR_YELLOW,  1000,1000,0);
+        init_color(COLOR_BLUE,    0,   0,   1000);
+        init_color(COLOR_MAGENTA, 1000,0,   1000);
+        init_color(COLOR_CYAN,    0,   1000,1000);
+        init_color(COLOR_WHITE,   1000,1000,1000);
+    }
+    else
+    {
+        // Apply the custom color scheme
+        for (int i = 0; i < 8; i++)
+        {
+            init_color(i,
+                      rgb_to_ncurses(scheme->colors[i].r),
+                      rgb_to_ncurses(scheme->colors[i].g),
+                      rgb_to_ncurses(scheme->colors[i].b));
+        }
+    }
+}
 
 /**
  * Handles the display of a service row with all its details.
@@ -191,6 +359,7 @@ static void display_text_and_lines(Bus *bus)
     int maxx, maxy;
     char tmptype[16] = {0};
     int headerrow = 3;
+    char navigation[256]; // Buffer for the complete navigation text
 
     struct winsize size;
     ioctl(STDOUT_FILENO, TIOCGWINSZ, &size);
@@ -205,10 +374,13 @@ static void display_text_and_lines(Bus *bus)
     attroff(COLOR_PAIR(9));
     border(0, 0, 0, 0, 0, 0, 0, 0);
 
+    // Create the navigation text with the current theme name
+    snprintf(navigation, sizeof(navigation), D_NAVIGATION_BASE, colors[colorscheme]);
+
     attron(A_BOLD);
     attron(COLOR_PAIR(0));
     mvaddstr(1, 1, D_HEADLINE);
-    mvaddstr(1, strlen(D_HEADLINE) + 1 + ((size.ws_col - strlen(D_HEADLINE) - strlen(D_QUIT) - strlen(D_NAVIGATION) - 2) / 2), D_NAVIGATION);
+    mvaddstr(1, strlen(D_HEADLINE) + 1 + ((size.ws_col - strlen(D_HEADLINE) - strlen(D_QUIT) - strlen(navigation) - 2) / 2), navigation);
     mvaddstr(1, size.ws_col - strlen(D_QUIT) - 1, D_QUIT);
 
     attron(COLOR_PAIR(9));
@@ -561,19 +733,22 @@ int display_key_pressed(sd_event_source *s, int fd, uint32_t revents, void *data
         break;
 
     case KEY_DOWN:
-        if (position + index_start >= max_services - 1) {
+        if (position + index_start >= max_services - 1)
+        {
             // Already at the last entry, prevent further scrolling
             break;
         }
-        
-        if (position < max_visible_rows - 1 && position + index_start < max_services - 1) {
+
+        if (position < max_visible_rows - 1 && position + index_start < max_services - 1)
+        {
             // If we're not at the bottom edge and there are more entries, move the cursor
             position++;
         }
-        else if (position + index_start < max_services - 1) {
+        else if (position + index_start < max_services - 1)
+        {
             // If we're at the bottom edge and there are more entries, scroll down
             index_start++;
-        }       
+        }
         break;
 
     case KEY_PPAGE: // Page Up
@@ -687,6 +862,26 @@ int display_key_pressed(sd_event_source *s, int fd, uint32_t revents, void *data
     case 'q':
         endwin();
         exit(EXIT_SUCCESS);
+        break;
+
+    case '+':
+        // Switch to the next theme
+        if (colorscheme < SOLARIZEDLIGHT) {  // SOLARIZEDLIGHT is the last theme
+            colorscheme++;
+            apply_color_scheme(&THEMES[colorscheme]);
+            set_color_scheme(colorscheme);
+            erase();
+        }
+        break;
+
+    case '-':
+        // Switch to the previous theme
+        if (colorscheme > DEFAULT) {  // DEFAULT is the first theme
+            colorscheme--;
+            apply_color_scheme(&THEMES[colorscheme]);
+            set_color_scheme(colorscheme);
+            erase();
+        }
         break;
 
     default:
@@ -947,25 +1142,14 @@ void display_init(void)
     keypad(stdscr, TRUE);
     nodelay(stdscr, TRUE);
     set_escdelay(0);
-    start_color();
 
     mousemask(ALL_MOUSE_EVENTS | REPORT_MOUSE_POSITION, NULL);
     printf("\033[?1003h\n"); // Extended mouse events enabled
 
-    // initialize colors
-    init_pair(0, COLOR_BLACK, COLOR_WHITE);
-    init_pair(1, COLOR_CYAN, COLOR_BLACK);
-    init_pair(2, COLOR_WHITE, COLOR_BLACK);
-    init_pair(3, COLOR_RED, COLOR_BLACK);
-    init_pair(4, COLOR_GREEN, COLOR_BLACK);
-    init_pair(5, COLOR_YELLOW, COLOR_BLACK);
-    init_pair(6, COLOR_BLUE, COLOR_BLACK);
-    init_pair(7, COLOR_MAGENTA, COLOR_BLACK);
-    init_pair(8, COLOR_WHITE, COLOR_BLUE);
-    init_pair(9, COLOR_WHITE, COLOR_RED);
-    init_pair(10, COLOR_BLACK, COLOR_GREEN);
-    init_pair(11, COLOR_RED, COLOR_YELLOW);
-    init_pair(12, COLOR_RED, COLOR_BLUE);
+    start_color();
+
+    apply_color_scheme(&THEMES[colorscheme]);
+    set_color_scheme(colorscheme);
 
     clear();
     border(0, 0, 0, 0, 0, 0, 0, 0);
@@ -1116,7 +1300,8 @@ void d_op(Bus *bus, Service *svc, enum operation mode, const char *txt)
             if (system("reset") != 0)
                 perror("system reset failed");
 
-            char *args[] = {"sudo", program_name, "-w", NULL};
+            char *args[] = {"sudo", program_name, "-w", "-c", colors[colorscheme], NULL};
+
             if (execvp("sudo", args) != 0)
             {
                 // If execvp fails, print an error message
