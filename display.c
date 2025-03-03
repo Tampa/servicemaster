@@ -281,7 +281,7 @@ int display_key_pressed(sd_event_source *s, int fd, uint32_t revents, void *data
     int maxx;
 
     // Mouse reset
-    printf("\033[?1003l\n");
+    printf("\033[?1003l");
     mousemask(0, NULL);
 
     getmaxyx(stdscr, maxy, maxx);
