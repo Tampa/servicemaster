@@ -1,4 +1,4 @@
-.TH SERVICEMASTER 1 "ServiceMaster 1.6.1" "User Commands"
+.TH SERVICEMASTER 1 "ServiceMaster 1.6.5" "User Commands"
 .SH NAME
 ServiceMaster \- A powerful tool for managing systemd units.
 .SH SYNOPSIS
@@ -24,6 +24,8 @@ Keyboard shortcuts for quick navigation and control.
 DBus event loop: Reacts immediately to external changes to units.
 .IP \[bu] 2
 Search for units by name.
+.IP \[bu] 2
+Switch between colorschemes.
 
 .SH REQUIREMENTS
 .IP \[bu] 2
@@ -48,6 +50,8 @@ a-z: Quick filter units by type.
 .IP \[bu] 2
 q or ESC: Quit the application.
 .IP \[bu] 2
++,-: Switch between colorschemes.
+.IP \[bu] 2
 f: Search for units by name.
 
 .SH CLI OPTIONS
@@ -57,6 +61,10 @@ f: Search for units by name.
 -w: Do not show the welcome message.
 .IP \[bu] 2
 -h: Display help / usage message and exit.
+.IP \[bu] 2
+-c: Set the colorscheme.
+.IP \[bu] 2
+-l: List all available colorschemes.
 
 .SH SECURITY NOTE
 For security reasons, only root can manipulate system units, and only user units can be manipulated when running as a regular user.
@@ -75,4 +83,4 @@ Email: monkeynator78@gmail.com.
 GitHub: https://github.com/lennart1978/servicemaster
 
 .SH VERSION
-1.6.1 (2025)
+1.6.5 (2025)

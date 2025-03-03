@@ -7,12 +7,25 @@
 char *program_name;
 bool show_welcome;
 
+// List of colorschemes
+const char *colors[] = {"default",
+                        "nord",
+                        "solarizeddark",
+                        "dracula",
+                        "monokai",
+                        "gruvboxdark",
+                        "onedark",
+                        "monochrome",
+                        "solarizedlight"};
+
 // Help message
-const char *help = "\nUsage: " D_HEADLINE " [options]\n"
+const char *help = "\nUsage: " D_HEADLINE " [options]\n\n"
                    "Options:\n"
-                   "  -v, --version     Display the version information and exit\n"
-                   "  -w, --no-welcome  Do not show the welcome message\n"
-                   "  -h, --help        Display this help message and exit\n\n"
+                   "  -v  Display the version information and exit\n"
+                   "  -w  Do not show the welcome message\n"
+                   "  -h  Display this help message and exit\n"
+                   "  -c  Set the colorscheme\n"
+                   "  -l  List all available colorschemes\n\n"
                    "After launching ServiceMaster, you can use the following controls:\n"
                    "- Arrow keys, page up/down: Navigate through the list of units.\n"
                    "- Space: Toggle between system and user units.\n"
@@ -20,6 +33,7 @@ const char *help = "\nUsage: " D_HEADLINE " [options]\n"
                    "- F1-F8: Perform actions (start, stop, restart, etc.) on the selected unit.\n"
                    "- a-z: Quick filter units by type.\n"
                    "- q or ESC: Quit the application.\n"
+                   "- +,-: Switch between colorschemes.\n"
                    "- f: Search for units by name.\n\n"
                    "                2025 Lennart Martens\n\n"
                    "License: MIT\n"
@@ -40,6 +54,19 @@ static void show_welcome_message()
         "Press any key to continue...";
 
     display_status_window(welcome_text, "ServiceMaster " D_VERSION);
+}
+
+static void list_colorschemes()
+{
+    wprintf(L"ServiceMaster " D_VERSION "\n\n");
+    wprintf(L"Available colorschemes:\n");
+    wprintf(L"-----------------------\n\n");
+
+    for (size_t i = 0; i < sizeof(colors) / sizeof(colors[0]); i++)
+    {
+        wprintf(L"%s\n", colors[i]);
+    }
+    wprintf(L"\n");
 }
 
 /**
@@ -80,7 +107,7 @@ int main(int argc, char *argv[])
     show_welcome = true;
 
     // Parse command line options
-    while ((option = getopt(argc, argv, "vwh")) != -1)
+    while ((option = getopt(argc, argv, "vwhc:l")) != -1)
     {
         switch (option)
         {
@@ -95,6 +122,55 @@ int main(int argc, char *argv[])
 
         case 'h':
             wprintf(L"%s", help);
+            return EXIT_SUCCESS;
+            break;
+
+        case 'c':
+            if (strcmp(optarg, "nord") == 0)
+            {
+                colorscheme = NORD;
+            }
+            else if (strcmp(optarg, "solarizeddark") == 0)
+            {
+                colorscheme = SOLARIZEDDARK;
+            }
+            else if (strcmp(optarg, "dracula") == 0)
+            {
+                colorscheme = DRACULA;
+            }
+            else if (strcmp(optarg, "monokai") == 0)
+            {
+                colorscheme = MONOKAI;
+            }
+            else if (strcmp(optarg, "gruvboxdark") == 0)
+            {
+                colorscheme = GRUVBOXDARK;
+            }
+            else if (strcmp(optarg, "onedark") == 0)
+            {
+                colorscheme = ONEDARK;
+            }
+            else if (strcmp(optarg, "monochrome") == 0)
+            {
+                colorscheme = MONOCHROME;
+            }
+            else if (strcmp(optarg, "solarizedlight") == 0)
+            {
+                colorscheme = SOLARIZEDLIGHT;
+            }
+            else if (strcmp(optarg, "default") == 0)
+            {
+                colorscheme = DEFAULT;
+            }
+            else
+            {
+                wprintf(L"Unknown colorscheme: %s\n", optarg);
+                return EXIT_FAILURE;
+            }
+            break;
+
+        case 'l':
+            list_colorschemes();
             return EXIT_SUCCESS;
             break;
 
