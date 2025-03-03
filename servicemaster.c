@@ -2,8 +2,29 @@
 #include "display.h"
 #include "bus.h"
 #include <ncurses.h>
+#include <getopt.h>
 
 char *program_name;
+bool show_welcome;
+
+// Help message
+const char *help = "\nUsage: " D_HEADLINE " [options]\n"
+                   "Options:\n"
+                   "  -v, --version     Display the version information and exit\n"
+                   "  -w, --no-welcome  Do not show the welcome message\n"
+                   "  -h, --help        Display this help message and exit\n\n"
+                   "After launching ServiceMaster, you can use the following controls:\n"
+                   "- Arrow keys, page up/down: Navigate through the list of units.\n"
+                   "- Space: Toggle between system and user units.\n"
+                   "- Enter: Show detailed status of the selected unit.\n"
+                   "- F1-F8: Perform actions (start, stop, restart, etc.) on the selected unit.\n"
+                   "- a-z: Quick filter units by type.\n"
+                   "- q or ESC: Quit the application.\n"
+                   "- f: Search for units by name.\n\n"
+                   "                2025 Lennart Martens\n\n"
+                   "License: MIT\n"
+                   "For bug reports, feature requests, or general inquiries:\n"
+                   "https://github.com/lennart1978/servicemaster\n\n";
 
 /**
  * Displays a welcome message with basic usage and security information.
@@ -53,17 +74,49 @@ void wait_input()
  */
 int main(int argc, char *argv[])
 {
-    (void)argc;
+    // Initialize program name and welcome message flag
     program_name = argv[0];
+    int option;
+    show_welcome = true;
 
+    // Parse command line options
+    while ((option = getopt(argc, argv, "vwh")) != -1)
+    {
+        switch (option)
+        {
+        case 'v':
+            wprintf(L"Version: " D_VERSION "\n");
+            return EXIT_SUCCESS;
+            break;
+
+        case 'w':
+            show_welcome = false;
+            break;
+
+        case 'h':
+            wprintf(L"%s", help);
+            return EXIT_SUCCESS;
+            break;
+
+        default:
+            wprintf(L"Wrong arguments: Type -h for help\n");
+            return EXIT_FAILURE;
+        }
+    }
+
+    // Set bus type based on user or root
     if (geteuid())
         display_set_bus_type(USER);
     else
         display_set_bus_type(SYSTEM);
 
+    // Initialize bus and display
     bus_init();
     display_init();
-    show_welcome_message();
+
+    if (show_welcome)
+        show_welcome_message();
+
     display_redraw(bus_currently_displayed());
 
     wait_input();

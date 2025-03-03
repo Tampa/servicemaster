@@ -561,16 +561,20 @@ int display_key_pressed(sd_event_source *s, int fd, uint32_t revents, void *data
         break;
 
     case KEY_DOWN:
-        if (position < max_visible_rows - 1 && position + index_start < max_services - 1)
-        {
+        if (position + index_start >= max_services - 1) {
+            // Already at the last entry, prevent further scrolling
+            break;
+        }
+        
+        if (position < max_visible_rows - 1 && position + index_start < max_services - 1) {
             // If we're not at the bottom edge and there are more entries, move the cursor
             position++;
         }
-        else if (position + index_start < max_services - 1)
-        {
+        else if (position + index_start < max_services - 1) {
             // If we're at the bottom edge and there are more entries, scroll down
             index_start++;
         }
+        // Entferne erase() hier, da es nicht nötig ist
         break;
 
     case KEY_PPAGE: // Page Up
@@ -1113,7 +1117,7 @@ void d_op(Bus *bus, Service *svc, enum operation mode, const char *txt)
             if (system("reset") != 0)
                 perror("system reset failed");
 
-            char *args[] = {"sudo", program_name, NULL};
+            char *args[] = {"sudo", program_name, "-w", NULL};
             if (execvp("sudo", args) != 0)
             {
                 // If execvp fails, print an error message
