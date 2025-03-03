@@ -573,8 +573,7 @@ int display_key_pressed(sd_event_source *s, int fd, uint32_t revents, void *data
         else if (position + index_start < max_services - 1) {
             // If we're at the bottom edge and there are more entries, scroll down
             index_start++;
-        }
-        // Entferne erase() hier, da es nicht nötig ist
+        }       
         break;
 
     case KEY_PPAGE: // Page Up
