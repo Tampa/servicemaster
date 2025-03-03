@@ -119,10 +119,10 @@ static void display_services(Bus *bus)
     struct winsize size;
     int visible_services = 0;
     int total_services = 0;
-    int dummy_maxx; // Dummy variable for getmaxyx
+    int dummy_maxx;
 
     getmaxyx(stdscr, maxy, dummy_maxx);
-    (void)dummy_maxx; // Mark as deliberately unused
+    (void)dummy_maxx;
 
     ioctl(STDOUT_FILENO, TIOCGWINSZ, &size);
     if (size.ws_col < (strlen(D_FUNCTIONS) + strlen(D_SERVICE_TYPES) + 2))
@@ -130,13 +130,10 @@ static void display_services(Bus *bus)
         headerrow = 4;
     }
 
-    // Adjust the starting point based on header size
-    int spc = headerrow + 2; // +2 for the separator line and a space
-
-    // Calculate the maximum number of rows that can be displayed
+    int spc = headerrow + 2;
     max_rows = maxy - spc - 1;
 
-    // Count the total number of services of the current type
+    // Zähle zuerst die Services im aktuellen Modus
     for (int i = 0;; i++)
     {
         svc = service_nth(bus, i);
@@ -147,12 +144,6 @@ static void display_services(Bus *bus)
     }
 
     services_invalidate_ypos(bus);
-
-    // Make sure index_start is not too large
-    if (index_start > 0 && index_start >= total_services - max_rows)
-    {
-        index_start = total_services > max_rows ? total_services - max_rows : 0;
-    }
 
     while (true)
     {
@@ -169,33 +160,24 @@ static void display_services(Bus *bus)
             continue;
         }
 
-        if (position == row)
+        if (row == position)
         {
             attron(COLOR_PAIR(8));
             attron(A_BOLD);
         }
-        else
+
+        display_service_row(svc, row, spc);
+
+        if (row == position)
         {
             attroff(COLOR_PAIR(8));
             attroff(A_BOLD);
         }
 
-        display_service_row(svc, row, spc);
-
         row++;
         idx++;
         visible_services++;
     }
-
-    // Make sure the cursor is not outside the visible area
-    if (position >= visible_services && visible_services > 0)
-    {
-        position = visible_services - 1;
-    }
-
-    // Make sure all attributes are reset
-    attroff(COLOR_PAIR(8));
-    attroff(A_BOLD);
 }
 
 /**
@@ -298,8 +280,8 @@ int display_key_pressed(sd_event_source *s, int fd, uint32_t revents, void *data
     int maxy;
     int maxx;
 
-    // Mouse-Reset
-    printf("\033[?1003l\n");
+    // Mouse reset
+    printf("\033[?1003l");
     mousemask(0, NULL);
 
     getmaxyx(stdscr, maxy, maxx);
@@ -338,113 +320,163 @@ int display_key_pressed(sd_event_source *s, int fd, uint32_t revents, void *data
 
     switch (c)
     {
-    case 'f':
-        char search_query[256] = {0};
+    case 'f': // Search function
+    {
+        Service *found_service = NULL;
+        int max_input_length = 50;   // Internal buffer (can be longer than the window)
+        char search_query[51] = {0}; // Space for 50 characters + null termination
         int win_height = 3, win_width = 80;
         int starty = (maxy - win_height) / 2;
         int startx = (maxx - win_width) / 2;
-        Service *found_service = NULL;
-        mode = ALL;
-        update_state = true;
+        int cursor = 0; // Current position in search_query
+        int ch;
+        static bool search_in_progress = false;
 
-        /* Create a small window to prompt for search text */
+        if (search_in_progress)
+            break;
+        search_in_progress = true;
+
         WINDOW *input_win = newwin(win_height, win_width, starty, startx);
         box(input_win, 0, 0);
-        mvwprintw(input_win, 1, 1, "Enter search query: ");
+        // Information line in window, show maximum length:
+        mvwprintw(input_win, 1, 1, "Search unit: ");
         wrefresh(input_win);
 
-        /* Enable echo and show cursor for user input */
-        echo();
+        echo(); // Show characters directly (optional, since we render ourselves)
         curs_set(1);
-        wgetnstr(input_win, search_query, sizeof(search_query) - 1);
+        // Switch the key input mode to non-blocking input field
+        keypad(input_win, TRUE);
+
+        // We only show the part of the input that fits in the window.
+        // Assume the visible area starts after displaying the static characters.
+        int offset = 1 + strlen("Search unit: ");
+        // How many characters fit in the visible area?
+        int visible_length = win_width - offset - 2; // 2 for border
+
+        // Process character-by-character input
+        while ((ch = wgetch(input_win)) != KEY_RETURN)
+        {
+            if ((ch == KEY_BACKSPACE || ch == 127) && cursor > 0)
+            {
+                cursor--;
+                search_query[cursor] = '\0';
+            }
+            else if (cursor < max_input_length && ch >= 32 && ch <= 126)
+            {
+                search_query[cursor++] = ch;
+                search_query[cursor] = '\0';
+            }
+            // Rendering: We calculate the start index so that if the input is longer than visible_length,
+            // only the last visible_length characters are displayed.
+            int start_index = 0;
+            if (cursor > visible_length)
+                start_index = cursor - visible_length;
+
+            // Clear the input area
+            for (int i = offset; i < win_width - 1; i++)
+            {
+                mvwaddch(input_win, 1, i, ' ');
+            }
+            // Display the visible part of the input
+            mvwprintw(input_win, 1, offset, "%s", &search_query[start_index]);
+            wmove(input_win, 1, offset + ((cursor > visible_length) ? visible_length : cursor));
+            wrefresh(input_win);
+        }
         noecho();
         curs_set(0);
-        // Nach dem Suchvorgang
+
+        // Clean up input window
         delwin(input_win);
         refresh();
         flushinp();
 
-        // Discard any remaining input
+        // Clear any remaining input
         while (getch() != ERR)
             ;
 
-        // Reset start_time
-        start_time = service_now();
-
-        /* If the search query is empty, do nothing */
+        // Exit search if query is empty
         if (strlen(search_query) == 0)
-            break;
-
-        /* Search among all services in the current bus regardless of filter */
-        int overall_index = 0;
-        Service *svc_iter;
-        while ((svc_iter = service_nth(bus, overall_index)) != NULL)
         {
-            /* Use case-insensitive substring search */
+            search_in_progress = false;
+            break;
+        }
+
+        // Store current mode and switch to ALL to search across all services
+        enum service_type current_mode = mode;
+        mode = ALL;
+
+        // Search for service matching query
+        for (int i = 0;; i++)
+        {
+            Service *svc_iter = service_nth(bus, i);
+            if (!svc_iter)
+                break;
+
             if (strcasestr(svc_iter->unit, search_query) != NULL)
             {
                 found_service = svc_iter;
                 break;
             }
-            overall_index++;
         }
 
         if (found_service)
         {
-            /* Automatically switch the mode to the found service's type */
+            // Switch to found service's type
             mode = found_service->type;
+            int filtered_pos = 0;
 
-            /* Determine the position of the found service in the filtered list */
-            int filtered_index = 0;
-            overall_index = 0;
-            while ((svc_iter = service_nth(bus, overall_index)) != NULL)
+            // Calculate position of found service in filtered list
+            for (int i = 0;; i++)
             {
-                if (mode == ALL || svc_iter->type == mode)
+                Service *svc = service_nth(bus, i);
+                if (!svc)
+                    break;
+
+                if (svc->type == mode)
                 {
-                    if (svc_iter == found_service)
+                    if (svc == found_service)
+                    {
+                        // Adjust scroll position to show found service
+                        if (filtered_pos >= max_visible_rows)
+                        {
+                            index_start = filtered_pos - max_visible_rows + 1;
+                            position = max_visible_rows - 1;
+                        }
+                        else
+                        {
+                            index_start = 0;
+                            position = filtered_pos;
+                        }
                         break;
-                    filtered_index++;
+                    }
+                    filtered_pos++;
                 }
-                overall_index++;
             }
-            /* Adjust index_start and position so that the found service is visible */
-            if (filtered_index < max_visible_rows)
-            {
-                index_start = 0;
-                position = filtered_index;
-            }
-            else
-            {
-                index_start = filtered_index - (max_visible_rows - 1);
-                position = max_visible_rows - 1;
-            }
+
+            // Redraw display with found service
+            clear();
+            display_services(bus);
+            display_text_and_lines(bus);
         }
         else
         {
-            /* Display a status window if no matching service is found */
+            // Restore previous mode if no service found
+            mode = current_mode;
             display_status_window("No matching service found.", "Search");
+            clear();
+            display_services(bus);
+            display_text_and_lines(bus);
         }
-
-        /* Redraw the entire screen after search */
-        erase();
-        display_redraw(bus);
         refresh();
 
-        // Reset start_time after search to prevent immediate exit
+        // Reset search state and update start time
+        search_in_progress = false;
         start_time = service_now();
-
-        // Nach der Suche, in display_key_pressed
-        if (max_services == 0)
-        {
-            index_start = 0;
-            position = 0;
-        }
-
-        break;
-
+        return 0;
+    }
     case KEY_ESC:
         nodelay(stdscr, TRUE); // Non-blocking mode
-        int esc_timeout = 50;  // 50ms Timeout für Escape-Sequenzen
+        int esc_timeout = 50;  // 50ms Timeout for Escape sequences
         wtimeout(stdscr, esc_timeout);
         // Buffer to store escape sequence characters
         char seq[10] = {0};
@@ -462,19 +494,19 @@ int display_key_pressed(sd_event_source *s, int fd, uint32_t revents, void *data
         // Handle different escape sequences for function keys, Some terminals send escape sequences for function keys
         if (strcmp(seq, "[11~") == 0)
         {
-            D_OP(bus, svc, START, "Start");
+            d_op(bus, svc, START, "Start");
         }
         else if (strcmp(seq, "[12~") == 0)
         {
-            D_OP(bus, svc, STOP, "Stop");
+            d_op(bus, svc, STOP, "Stop");
         }
         else if (strcmp(seq, "[13~") == 0)
         {
-            D_OP(bus, svc, RESTART, "Restart");
+            d_op(bus, svc, RESTART, "Restart");
         }
         else if (strcmp(seq, "[14~") == 0)
         {
-            D_OP(bus, svc, ENABLE, "Enable");
+            d_op(bus, svc, ENABLE, "Enable");
             update_state = true;
         }
         else
@@ -485,35 +517,35 @@ int display_key_pressed(sd_event_source *s, int fd, uint32_t revents, void *data
             endwin();
             exit(EXIT_SUCCESS);
         }
-        nodelay(stdscr, FALSE); // Zurück zum normalen Modus
+        nodelay(stdscr, FALSE); // back to normal mode
         break;
     case KEY_F(1):
-        D_OP(bus, svc, START, "Start");
+        d_op(bus, svc, START, "Start");
         break;
     case KEY_F(2):
-        D_OP(bus, svc, STOP, "Stop");
+        d_op(bus, svc, STOP, "Stop");
         break;
     case KEY_F(3):
-        D_OP(bus, svc, RESTART, "Restart");
+        d_op(bus, svc, RESTART, "Restart");
         break;
     case KEY_F(4):
-        D_OP(bus, svc, ENABLE, "Enable");
+        d_op(bus, svc, ENABLE, "Enable");
         update_state = true;
         break;
     case KEY_F(5):
-        D_OP(bus, svc, DISABLE, "Disable");
+        d_op(bus, svc, DISABLE, "Disable");
         update_state = true;
         break;
     case KEY_F(6):
-        D_OP(bus, svc, MASK, "Mask");
+        d_op(bus, svc, MASK, "Mask");
         update_state = true;
         break;
     case KEY_F(7):
-        D_OP(bus, svc, UNMASK, "Unmask");
+        d_op(bus, svc, UNMASK, "Unmask");
         update_state = true;
         break;
     case KEY_F(8):
-        D_OP(bus, svc, RELOAD, "Reload");
+        d_op(bus, svc, RELOAD, "Reload");
         break;
     case KEY_UP:
         if (position > 0)
@@ -529,16 +561,19 @@ int display_key_pressed(sd_event_source *s, int fd, uint32_t revents, void *data
         break;
 
     case KEY_DOWN:
-        if (position < max_visible_rows - 1 && position + index_start < max_services - 1)
-        {
+        if (position + index_start >= max_services - 1) {
+            // Already at the last entry, prevent further scrolling
+            break;
+        }
+        
+        if (position < max_visible_rows - 1 && position + index_start < max_services - 1) {
             // If we're not at the bottom edge and there are more entries, move the cursor
             position++;
         }
-        else if (position + index_start < max_services - 1)
-        {
+        else if (position + index_start < max_services - 1) {
             // If we're at the bottom edge and there are more entries, scroll down
             index_start++;
-        }
+        }       
         break;
 
     case KEY_PPAGE: // Page Up
@@ -580,6 +615,7 @@ int display_key_pressed(sd_event_source *s, int fd, uint32_t revents, void *data
     case KEY_SPACE:
         if (bus_system_only())
             break;
+
         type ^= 0x1;
         bus = bus_currently_displayed();
         sd_event_source_set_userdata(s, bus);
@@ -660,12 +696,12 @@ int display_key_pressed(sd_event_source *s, int fd, uint32_t revents, void *data
     if (update_state)
     {
         if (svc != NULL)
-        { // <-- Schutz vor NULL-Zeigern
+        { // NULL pointer protection
             bus_update_unit_file_state(bus, svc);
             display_redraw_row(svc);
             svc->changed = 0;
         }
-        update_state = false; // Zurücksetzen nach Verarbeitung
+        update_state = false; // reset after processing
     }
 
     // Make sure we are not going over the end of the list
@@ -738,6 +774,27 @@ enum service_type display_mode(void)
  */
 void display_redraw(Bus *bus)
 {
+    struct winsize size;
+    ioctl(STDOUT_FILENO, TIOCGWINSZ, &size);
+
+    // Create the headline text with root marking
+    char headline[100];
+    snprintf(headline, sizeof(headline), "%s%s%s",
+             D_HEADLINE,
+             (geteuid() == 0) ? " " : "",
+             (geteuid() == 0) ? "(root)" : "");
+
+    mvaddstr(1, 1, headline);
+    if (geteuid() == 0)
+    {
+        // Position directly after the already written text
+        int root_pos = 1 + strlen(D_HEADLINE) + 1;
+        move(1, root_pos);
+        attron(COLOR_PAIR(3) | A_BOLD); // Red and bold
+        printw("(root)");
+        attroff(COLOR_PAIR(3) | A_BOLD);
+    }
+
     display_services(bus);
     clrtobot();
     display_text_and_lines(bus);
@@ -893,7 +950,7 @@ void display_init(void)
     start_color();
 
     mousemask(ALL_MOUSE_EVENTS | REPORT_MOUSE_POSITION, NULL);
-    printf("\033[?1003h\n"); // Erweiterte Maus-Events aktivieren
+    printf("\033[?1003h\n"); // Extended mouse events enabled
 
     // initialize colors
     init_pair(0, COLOR_BLACK, COLOR_WHITE);
@@ -1011,4 +1068,79 @@ void display_status_window(const char *status, const char *title)
 
     delwin(win);
     refresh();
+}
+
+void d_op(Bus *bus, Service *svc, enum operation mode, const char *txt)
+{
+    (void)svc;
+    bool success = false;
+
+    if (bus->type == SYSTEM && euid != 0)
+    {
+        // Create a new window with a box
+        WINDOW *win = newwin(6, 60, LINES / 2 - 3, COLS / 2 - 30);
+        box(win, 0, 0);
+
+        // Enable red color and bold
+        wattron(win, COLOR_PAIR(3));
+        wattron(win, A_BOLD);
+
+        mvwprintw(win, 0, 2, "Info:");
+        mvwprintw(win, 2, 2, "You must be root for this operation on system units.");
+        mvwprintw(win, 3, 2, "Would you like to restart with sudo? (y/n)");
+
+        // Disable bold and red color
+        wattroff(win, A_BOLD);
+        wattroff(win, COLOR_PAIR(3));
+
+        wrefresh(win);
+
+        // Clear any remaining input
+        flushinp();
+        nodelay(stdscr, FALSE);
+
+        // Wait for user input
+        int c = wgetch(win);
+
+        // Clean up the window
+        delwin(win);
+        touchwin(stdscr);
+        refresh();
+
+        if (c == 'y' || c == 'Y')
+        {
+            // End ncurses mode
+            endwin();
+
+            // Attempt to reset the terminal
+            if (system("reset") != 0)
+                perror("system reset failed");
+
+            char *args[] = {"sudo", program_name, "-w", NULL};
+            if (execvp("sudo", args) != 0)
+            {
+                // If execvp fails, print an error message
+                perror("execvp failed to execute sudo");
+                exit(EXIT_FAILURE);
+            }
+            exit(EXIT_SUCCESS);
+        }
+
+        // Return to ncurses mode
+        nodelay(stdscr, TRUE);
+        return;
+    }
+
+    Service *temp_svc = service_nth(bus, position + index_start);
+    if (!temp_svc)
+    {
+        display_status_window("No valid service selected.", "Error:");
+        return;
+    }
+
+    success = bus_operation(bus, temp_svc, mode);
+    if (!success)
+    {
+        display_status_window("Command could not be executed on this unit.", txt);
+    }
 }

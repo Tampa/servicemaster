@@ -1,4 +1,4 @@
-# ServiceMaster 1.6.0
+# ServiceMaster 1.6.1
 
 ServiceMaster is a powerful terminal-based tool for managing systemd units on Linux systems. It provides an intuitive interface for viewing and controlling system and user units, making it easier to manage your units without leaving the command line.
 
@@ -31,6 +31,12 @@ After launching ServiceMaster, you can use the following controls:
 - q or ESC: Quit the application
 - f: Search for units by name
 
+## CLI Options
+
+- `-v:` Display the version information and exit
+- `-w:` Do not show the welcome message
+- `-h:` Display help / usage message and exit
+
 ## Security Note
 
 For security reasons, only root can manipulate system units, and only user units can be manipulated when running as a regular user.
@@ -45,7 +51,7 @@ Lennart Martens
 
 ## Version
 
-1.6.0 (2025)
+1.6.1 (2025)
 
 ## Building & Install
 
@@ -89,8 +95,13 @@ meson install -C builddir
 
 (I'm not the maintainer of the -bin version)
 
-ServiceMaster in 'Kitty' terminal and 'Monokai' theme:
-![ss1](sm-kitty-monokai.png)
-ServiceMaster in 'Kgx' standard Gnome terminal emulator:
-![ss2](servicemaster.png)
+### Screenshots
+
+ServiceMaster in 'kgx' standard Gnome terminal emulator:
+![ss1](gnome_ss.png)
+ServiceMaster in 'Kitty' terminal and 'gruvbox-dark' theme:
+![ss2](kitty_ss.png)
+
+### Logo
+
 ![ss3](servicemaster-logo.jpeg)
