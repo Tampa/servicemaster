@@ -98,9 +98,9 @@ meson install -C builddir
 ### Screenshots
 
 ServiceMaster in 'kgx' standard Gnome terminal emulator:
-![ss1](gnome-ss.png)
+![ss1](gnome_ss.png)
 ServiceMaster in 'Kitty' terminal and 'gruvbox-dark' theme:
-![ss2](kitty-ss.png)
+![ss2](kitty_ss.png)
 
 ### Logo
 
