@@ -120,14 +120,14 @@ static const ColorScheme THEMES[] = {
      }},
     {.name = "solarizedlight", // SOLARIZEDLIGHT = 8
      .colors = {
-         {0, 43, 54},    // COLOR_BLACK  - Base03
-         {220, 50, 47},  // COLOR_RED    - Red
-         {133, 153, 0},  // COLOR_GREEN  - Green
-         {181, 137, 0},  // COLOR_YELLOW - Yellow
-         {38, 139, 210}, // COLOR_BLUE   - Blue
-         {211, 54, 130}, // COLOR_MAGENTA - Magenta
-         {42, 161, 152}, // COLOR_CYAN   - Cyan
-         {238, 232, 213} // COLOR_WHITE  - Base2
+         {238, 232, 213}, // COLOR_BLACK  - Base02
+         {220, 50, 47},   // COLOR_RED    - Red
+         {133, 153, 0},   // COLOR_GREEN  - Green
+         {211, 54, 130},  // COLOR_YELLOW - Yellow
+         {38, 139, 210},  // COLOR_BLUE   - Blue
+         {181, 137, 0},   // COLOR_MAGENTA - Magenta
+         {42, 161, 152},  // COLOR_CYAN   - Cyan
+         {0, 43, 54}      // COLOR_WHITE  - Base2
      }}};
 
 // Set the color scheme
@@ -168,14 +168,14 @@ static void apply_color_scheme(const ColorScheme *scheme)
     if (strcmp(scheme->name, "default") == 0)
     {
         // Reset the original terminal colors
-        init_color(COLOR_BLACK,   0,   0,   0);
-        init_color(COLOR_RED,     1000,0,   0);
-        init_color(COLOR_GREEN,   0,   1000,0);
-        init_color(COLOR_YELLOW,  1000,1000,0);
-        init_color(COLOR_BLUE,    0,   0,   1000);
-        init_color(COLOR_MAGENTA, 1000,0,   1000);
-        init_color(COLOR_CYAN,    0,   1000,1000);
-        init_color(COLOR_WHITE,   1000,1000,1000);
+        init_color(COLOR_BLACK, 0, 0, 0);
+        init_color(COLOR_RED, 1000, 0, 0);
+        init_color(COLOR_GREEN, 0, 1000, 0);
+        init_color(COLOR_YELLOW, 1000, 1000, 0);
+        init_color(COLOR_BLUE, 0, 0, 1000);
+        init_color(COLOR_MAGENTA, 1000, 0, 1000);
+        init_color(COLOR_CYAN, 0, 1000, 1000);
+        init_color(COLOR_WHITE, 1000, 1000, 1000);
     }
     else
     {
@@ -183,9 +183,9 @@ static void apply_color_scheme(const ColorScheme *scheme)
         for (int i = 0; i < 8; i++)
         {
             init_color(i,
-                      rgb_to_ncurses(scheme->colors[i].r),
-                      rgb_to_ncurses(scheme->colors[i].g),
-                      rgb_to_ncurses(scheme->colors[i].b));
+                       rgb_to_ncurses(scheme->colors[i].r),
+                       rgb_to_ncurses(scheme->colors[i].g),
+                       rgb_to_ncurses(scheme->colors[i].b));
         }
     }
 }
@@ -301,7 +301,7 @@ static void display_services(Bus *bus)
     int spc = headerrow + 2;
     max_rows = maxy - spc - 1;
 
-    // Zähle zuerst die Services im aktuellen Modus
+    // Count the total number of services of the current type
     for (int i = 0;; i++)
     {
         svc = service_nth(bus, i);
@@ -330,7 +330,8 @@ static void display_services(Bus *bus)
 
         if (row == position)
         {
-            attron(COLOR_PAIR(8));
+            // Monochrome theme needs a different color pair
+            colorscheme == MONOCHROME ? attron(COLOR_PAIR(9)) : attron(COLOR_PAIR(8));
             attron(A_BOLD);
         }
 
@@ -338,7 +339,8 @@ static void display_services(Bus *bus)
 
         if (row == position)
         {
-            attroff(COLOR_PAIR(8));
+            // Monochrome theme needs a different color pair
+            colorscheme == MONOCHROME ? attroff(COLOR_PAIR(9)) : attroff(COLOR_PAIR(8));
             attroff(A_BOLD);
         }
 
@@ -371,14 +373,15 @@ static void display_text_and_lines(Bus *bus)
 
     getmaxyx(stdscr, maxy, maxx);
 
-    attroff(COLOR_PAIR(9));
+    // Solarized light theme needs a different color pair
+    colorscheme == SOLARIZEDLIGHT ? attron(COLOR_PAIR(7)) : attron(COLOR_PAIR(0));
+
     border(0, 0, 0, 0, 0, 0, 0, 0);
 
     // Create the navigation text with the current theme name
     snprintf(navigation, sizeof(navigation), D_NAVIGATION_BASE, colors[colorscheme]);
 
     attron(A_BOLD);
-    attron(COLOR_PAIR(0));
     mvaddstr(1, 1, D_HEADLINE);
     mvaddstr(1, strlen(D_HEADLINE) + 1 + ((size.ws_col - strlen(D_HEADLINE) - strlen(D_QUIT) - strlen(navigation) - 2) / 2), navigation);
     mvaddstr(1, size.ws_col - strlen(D_QUIT) - 1, D_QUIT);
@@ -397,7 +400,10 @@ static void display_text_and_lines(Bus *bus)
         mvaddstr(2, size.ws_col - strlen(D_SERVICE_TYPES) - 1, D_SERVICE_TYPES);
     }
     attroff(COLOR_PAIR(10));
+    attroff(A_BOLD);
 
+    // Solarized light theme needs a different color pair
+    colorscheme == SOLARIZEDLIGHT ? attron(COLOR_PAIR(7)) : attron(COLOR_PAIR(0));
     mvprintw(headerrow, D_XLOAD - 10, "Pos.:%3d", position + index_start);
     mvprintw(headerrow, 1, "UNIT:");
 
@@ -405,6 +411,8 @@ static void display_text_and_lines(Bus *bus)
     mvprintw(headerrow, 7, "(%s)", type ? "USER" : "SYSTEM");
     attroff(COLOR_PAIR(4));
 
+    // Solarized light theme needs a different color pair
+    colorscheme == SOLARIZEDLIGHT ? attron(COLOR_PAIR(7)) : attron(COLOR_PAIR(0));
     mvprintw(headerrow, D_XLOAD, "STATE:");
     mvprintw(headerrow, D_XACTIVE, "ACTIVE:");
     mvprintw(headerrow, D_XSUB, "SUB:");
@@ -866,7 +874,8 @@ int display_key_pressed(sd_event_source *s, int fd, uint32_t revents, void *data
 
     case '+':
         // Switch to the next theme
-        if (colorscheme < SOLARIZEDLIGHT) {  // SOLARIZEDLIGHT is the last theme
+        if (colorscheme < SOLARIZEDLIGHT)
+        { // SOLARIZEDLIGHT is the last theme
             colorscheme++;
             apply_color_scheme(&THEMES[colorscheme]);
             set_color_scheme(colorscheme);
@@ -876,7 +885,8 @@ int display_key_pressed(sd_event_source *s, int fd, uint32_t revents, void *data
 
     case '-':
         // Switch to the previous theme
-        if (colorscheme > DEFAULT) {  // DEFAULT is the first theme
+        if (colorscheme > DEFAULT)
+        { // DEFAULT is the first theme
             colorscheme--;
             apply_color_scheme(&THEMES[colorscheme]);
             set_color_scheme(colorscheme);
@@ -1231,6 +1241,8 @@ void display_status_window(const char *status, const char *title)
 
     if (rows == 0)
         wattron(win, COLOR_PAIR(13));
+    else
+        colorscheme == SOLARIZEDLIGHT ? wattron(win, COLOR_PAIR(7)) : wattron(win, COLOR_PAIR(0));
 
     line_start = status_cpy;
     while ((line_end = strchr(line_start, '\n')) != NULL)
