@@ -301,7 +301,7 @@ static void display_services(Bus *bus)
     int spc = headerrow + 2;
     max_rows = maxy - spc - 1;
 
-    // Zähle zuerst die Services im aktuellen Modus
+    // Count the total number of services of the current type
     for (int i = 0;; i++)
     {
         svc = service_nth(bus, i);
@@ -330,7 +330,8 @@ static void display_services(Bus *bus)
 
         if (row == position)
         {
-            attron(COLOR_PAIR(8));
+            // Monochrome theme needs a different color pair
+            colorscheme == MONOCHROME ? attron(COLOR_PAIR(9)) : attron(COLOR_PAIR(8));
             attron(A_BOLD);
         }
 
@@ -338,7 +339,8 @@ static void display_services(Bus *bus)
 
         if (row == position)
         {
-            attroff(COLOR_PAIR(8));
+            // Monochrome theme needs a different color pair
+            colorscheme == MONOCHROME ? attroff(COLOR_PAIR(9)) : attroff(COLOR_PAIR(8));
             attroff(A_BOLD);
         }
 
