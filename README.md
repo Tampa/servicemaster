@@ -99,7 +99,7 @@ meson install -C builddir
 
 (I'm not the maintainer of the -bin version)
 
-### Screenshots with different colorschemes
+### Screenshots with different colorschemes (Kitty terminal, Nerd Fonts)
 
 Default:
 ![default](screenshots/default.png)
