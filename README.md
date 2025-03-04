@@ -1,4 +1,4 @@
-# ServiceMaster 1.6.5
+# ServiceMaster 1.6.6
 
 ServiceMaster is a powerful terminal-based tool for managing systemd units on Linux systems. It provides an intuitive interface for viewing and controlling system and user units, making it easier to manage your units without leaving the command line.
 
@@ -55,7 +55,7 @@ Lennart Martens
 
 ## Version
 
-1.6.5 (2025)
+1.6.6 (2025)
 
 ## Building & Install
 
