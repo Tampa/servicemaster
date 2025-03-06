@@ -12,13 +12,13 @@ ServiceMaster is a powerful terminal-based tool for managing Systemd units on Li
 - Keyboard shortcuts for quick navigation and control
 - DBus event loop: Reacts immediately to external changes to units
 - Switch between colorschemes, edit or add colorschemes
-- Easy configuration with Toml file
+- Easy configuration with TOML file
 - Search for units by name
 
 ## Requirements
 
 - Linux system with Systemd
-- NCurses library
+- ncurses library
 - Systemd development libraries
 
 ## Usage
@@ -39,8 +39,8 @@ After launching ServiceMaster, you can use the following controls:
 - `-v:` Display the version information and exit
 - `-w:` Do not show the welcome message
 - `-h:` Display help / usage message and exit
-- `-c:` Set the colorscheme
-        Colorschemes with a space must be enclosed in quotes!
+- `-c:` Set the colorscheme.
+        Names with a space must be enclosed in quotes!
 - `-l:` List all available colorschemes
 - `-p:` Print configuration file (with colorschemes)
 - `-e:` Edit the configuration file
@@ -52,7 +52,8 @@ For security reasons, only root can manipulate system units, and only user units
 ## License
 
 This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
-The Toml library is licensed under the MIT License. See the [toml.h](lib/toml.h) file for details.
+
+The TOML library is also licensed under the MIT License. See the [toml.h](lib/toml.h) file for details.
 
 ## Author
 
@@ -118,7 +119,7 @@ meson install -C builddir
 sudo rm /usr/local/bin/servicemaster && sudo rm /usr/local/share/man/man1/servicemaster.1 && sudo rm /etc/servicemaster/servicemaster.toml
 ```
 
-## For Archlinux users: There is 'servicemaster-git' (recommended) and 'servicemaster-bin' in the AUR
+### For Archlinux users: There is 'servicemaster-git' (recommended) and 'servicemaster-bin' in the AUR
 
 ### I recommend installing the -git version ! It is in most cases much more bugfree / stable and uptodate than the -bin version
 
@@ -134,17 +135,19 @@ You can edit it with:
 servicemaster -e
 ```
 
+This will open the TOML config file with your standard editor ($EDITOR) 
+
 Print the configuration file with:
 
 ```bash
 servicemaster -p
 ```
 
-
+This will just print with cat piped to less (cat config.toml | less)
 
 ## Colorschemes
 
-You can add your own colorschemes to the configuration file or change the existing ones.
+You can add your own colorschemes to the configuration file or change the existing ones
 
 You can list all available colorschemes with:
 
