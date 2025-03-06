@@ -1,22 +1,23 @@
-# ServiceMaster 1.6.6
+# ServiceMaster 1.7.0
 
-ServiceMaster is a powerful terminal-based tool for managing systemd units on Linux systems. It provides an intuitive interface for viewing and controlling system and user units, making it easier to manage your units without leaving the command line.
+ServiceMaster is a powerful terminal-based tool for managing Systemd units on Linux systems. It provides an intuitive interface for viewing and controlling system and user units, making it easier to manage your units without leaving the command line.
 
 ## Features
 
-- View all systemd units or filter by type (services, devices, sockets, etc.)
+- View all Systemd units or filter by type (services, devices, sockets, etc.)
 - Start, stop, restart, enable, disable, mask, and unmask units
 - View detailed status information for each unit
 - Switch between system and user units
 - User-friendly ncurses interface with color-coded information
 - Keyboard shortcuts for quick navigation and control
 - DBus event loop: Reacts immediately to external changes to units
+- Switch between colorschemes, edit or add colorschemes
+- Easy configuration with Toml file
 - Search for units by name
-- Switch between colorschemes
 
 ## Requirements
 
-- Linux system with systemd
+- Linux system with Systemd
 - NCurses library
 - Systemd development libraries
 
@@ -39,7 +40,10 @@ After launching ServiceMaster, you can use the following controls:
 - `-w:` Do not show the welcome message
 - `-h:` Display help / usage message and exit
 - `-c:` Set the colorscheme
+        Colorschemes with a space must be enclosed in quotes!
 - `-l:` List all available colorschemes
+- `-p:` Print configuration file (with colorschemes)
+- `-e:` Edit the configuration file
 
 ## Security Note
 
@@ -48,6 +52,7 @@ For security reasons, only root can manipulate system units, and only user units
 ## License
 
 This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
+The Toml library is licensed under the MIT License. See the [toml.h](lib/toml.h) file for details.
 
 ## Author
 
@@ -55,7 +60,7 @@ Lennart Martens
 
 ## Version
 
-1.6.6 (2025)
+1.7.0 (2025)
 
 ## Building & Install
 
@@ -87,10 +92,30 @@ meson setup builddir --buildtype=release --prefix=/usr/local
 meson compile -C builddir
 ```
 
+### If you want to update from a very old version (< 1.6.0), remove the old version first!
+
+```bash
+ sudo rm /usr/bin/servicemaster && sudo rm /usr/share/man/man1/servicemaster.1
+```
+
 ### Install
 
 ```bash
 meson install -C builddir
+```
+
+' --prefix=/usr/local' as 'meson setup' option will install to the following locations:
+
+- The man page will be installed to `/usr/local/share/man/man1/servicemaster.1`
+
+- The binary will be installed to `/usr/local/bin/servicemaster`
+
+- The configuration file will be installed to `/etc/servicemaster/servicemaster.toml`
+
+### Uninstall (if you didn't change the prefix)
+
+```bash
+sudo rm /usr/local/bin/servicemaster && sudo rm /usr/local/share/man/man1/servicemaster.1 && sudo rm /etc/servicemaster/servicemaster.toml
 ```
 
 ## For Archlinux users: There is 'servicemaster-git' (recommended) and 'servicemaster-bin' in the AUR
@@ -99,26 +124,58 @@ meson install -C builddir
 
 (I'm not the maintainer of the -bin version)
 
-### Screenshots with different colorschemes (Kitty terminal, Nerd Fonts)
+## The configuration
 
-Default:
-![default](screenshots/default.png)
+The configuration file is located at `/etc/servicemaster/servicemaster.toml`
+
+You can edit it with:
+
+```bash
+servicemaster -e
+```
+
+Print the configuration file with:
+
+```bash
+servicemaster -p
+```
+
+
+
+## Colorschemes
+
+You can add your own colorschemes to the configuration file or change the existing ones.
+
+You can list all available colorschemes with:
+
+```bash
+servicemaster -l
+```
+
+You can switch between colorschemes with the '+' and '-' keys.
+
+### Screenshots with 10 different colorschemes (Kitty terminal, Nerd Fonts)
+
+Schrill:
+![Schrill](screenshots/Schrill.png)
 Nord:
-![nord](screenshots/nord.png)
+![Nord](screenshots/Nord.png)
 Solarized Dark:
-![solarizeddark](screenshots/solarizeddark.png)
+![Solarized Dark](screenshots/Solarized_Dark.png)
 Dracula:
-![dracula](screenshots/dracula.png)
+![Dracula](screenshots/Dracula.png)
 Monokai:
-![monokai](screenshots/monokai.png)
+![Monokai](screenshots/Monokai.png)
 Gruvbox Dark:
-![gruvboxdark](screenshots/gruvboxdark.png)
+![Gruvbox Dark](screenshots/Gruvbox_Dark.png)
 One Dark:
-![onedark](screenshots/onedark.png)
+![One Dark](screenshots/One_Dark.png)
 Monochrome:
-![monochrome](screenshots/monochrome.png)
+![Monochrome](screenshots/Monochrome.png)
 Solarized Light:
-![solarizedlight](screenshots/solarizedlight.png)
+![Solarized Light](screenshots/Solarized_Light.png)
+Material:
+![Material](screenshots/Material.png)
 
 ### Logo
 

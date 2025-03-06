@@ -1,4 +1,4 @@
-.TH SERVICEMASTER 1 "ServiceMaster 1.6.6" "User Commands"
+.TH SERVICEMASTER 1 "ServiceMaster 1.7.0" "User Commands" "ServiceMaster 1.7.0"
 .SH NAME
 ServiceMaster \- A powerful tool for managing systemd units.
 .SH SYNOPSIS
@@ -23,9 +23,11 @@ Keyboard shortcuts for quick navigation and control.
 .IP \[bu] 2
 DBus event loop: Reacts immediately to external changes to units.
 .IP \[bu] 2
-Search for units by name.
+Switch between colorschemes, edit or add colorschemes.
 .IP \[bu] 2
-Switch between colorschemes.
+Easy configuration with Toml file.
+.IP \[bu] 2
+Search for units by name.
 
 .SH REQUIREMENTS
 .IP \[bu] 2
@@ -63,14 +65,40 @@ f: Search for units by name.
 -h: Display help / usage message and exit.
 .IP \[bu] 2
 -c: Set the colorscheme.
+    Colorschemes with a space must be enclosed in quotes!
 .IP \[bu] 2
 -l: List all available colorschemes.
+.IP \[bu] 2
+-p: Print configuration file (with colorschemes).
+.IP \[bu] 2
+-e: Edit the configuration file.
+
+.SH CONFIGURATION
+The configuration file is located at /etc/servicemaster/servicemaster.toml
+.PP
+You can edit it with:
+.PP
+.B servicemaster -e
+.PP
+Print the configuration file with:
+.PP
+.B servicemaster -p
+
+.SH COLORSCHEMES
+You can add your own colorschemes to the configuration file or change the existing ones.
+.PP
+List all available colorschemes with:
+.PP
+.B servicemaster -l
+.PP
+Switch between colorschemes using the '+' and '-' keys.
 
 .SH SECURITY NOTE
 For security reasons, only root can manipulate system units, and only user units can be manipulated when running as a regular user.
 
 .SH LICENSE
 This project is licensed under the MIT License. See the LICENSE file for details.
+The Toml library is licensed under the MIT License. See the lib/toml.h file for details.
 
 .SH AUTHOR
 Lennart Martens
@@ -78,9 +106,9 @@ Lennart Martens
 .SH CONTACT
 For bug reports, feature requests, or general inquiries:
 .IP \[bu] 2
-Email: monkeynator78@gmail.com.
+Email: monkeynator78@gmail.com
 .IP \[bu] 2
 GitHub: https://github.com/lennart1978/servicemaster
 
 .SH VERSION
-1.6.6 (2025)
+1.7.0 (2025)

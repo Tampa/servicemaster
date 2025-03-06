@@ -1,0 +1,127 @@
+# File: servicemaster.toml
+# -=ServiceMaster=- Configuration File
+
+# When no colorscheme is specified, this one will be used
+actual_colorscheme = "Solarized Dark"
+
+# Light colorschemes (like Solarized Light, Monochrome)
+# often need special implementations in the program
+# I recommend to use dark colorschemes if you don't want to edit the C source code
+
+# Available colorschemes:
+[[colorschemes]]
+name    = "Schrill"
+black   = [0  , 0  , 0  ]
+red     = [255, 0  , 0  ]
+green   = [0  , 255, 0  ]
+yellow  = [255, 255, 0  ]
+blue    = [0  , 0  , 255]
+magenta = [255, 0  , 255]
+cyan    = [0  , 255, 255]
+white   = [255, 255, 255]
+
+[[colorschemes]]
+name    = "Nord"
+black   = [46 , 52 , 64 ]
+red     = [191, 97 , 106]
+green   = [163, 190, 140]
+yellow  = [235, 203, 139]
+blue    = [94 , 129, 172]
+magenta = [143, 188, 187]
+cyan    = [136, 192, 208]
+white   = [216, 222, 233]
+
+[[colorschemes]]
+name    = "Solarized Dark"
+black   = [0  , 43 , 54 ]
+red     = [220, 50 , 47 ]
+green   = [133, 153, 0  ]
+yellow  = [181, 137, 0  ]
+blue    = [38 , 139, 210]
+magenta = [211, 54 , 130]
+cyan    = [42 , 161, 152]
+white   = [238, 232, 213]
+
+[[colorschemes]]
+name    = "Dracula"
+black   = [40 , 42 , 54 ]
+red     = [255, 85 , 85 ]
+green   = [80 , 250, 123]
+yellow  = [241, 250, 140]
+blue    = [189, 147, 249]
+magenta = [255, 121, 198]
+cyan    = [139, 233, 253]
+white   = [248, 248, 242]
+
+[[colorschemes]]
+name    = "Monokai"
+black   = [39 , 40 , 34 ]
+red     = [249, 38 , 114]
+green   = [166, 226, 46 ]
+yellow  = [253, 151, 31 ]
+blue    = [102, 217, 239]
+magenta = [174, 129, 255]
+cyan    = [137, 221, 255]
+white   = [248, 248, 242]
+
+[[colorschemes]]
+name    = "Gruvbox Dark"
+black   = [29 , 32 , 33 ]
+red     = [204, 36 , 29 ]
+green   = [152, 151, 26 ]
+yellow  = [215, 153, 33 ]
+blue    = [69 , 133, 136]
+magenta = [177, 98 , 134]
+cyan    = [104, 157, 106]
+white   = [235, 219, 178]
+
+[[colorschemes]]
+name    = "One Dark"
+black   = [40 , 44 , 52 ]
+red     = [224, 108, 117]
+green   = [152, 195, 121]
+yellow  = [229, 192, 123]
+blue    = [97 , 175, 239]
+magenta = [198, 120, 221]
+cyan    = [86 , 182, 194]
+white   = [171, 178, 191]
+
+[[colorschemes]]
+name    = "Monochrome"
+black   = [0  , 0  , 0  ]
+red     = [64 , 64 , 64 ]
+green   = [128, 128, 128]
+yellow  = [192, 192, 192]
+blue    = [255, 255, 255]
+magenta = [128, 128, 128]
+cyan    = [192, 192, 192]
+white   = [255, 255, 255]
+
+[[colorschemes]]
+name    = "Solarized Light"
+black   = [238, 232, 213]
+red     = [220, 50 , 47 ]
+green   = [133, 153, 0  ]
+yellow  = [211, 54 , 130]
+blue    = [38 , 139, 210]
+magenta = [181, 137, 0  ]
+cyan    = [42 , 161, 152]
+white   = [0  , 43 , 54 ]
+
+[[colorschemes]]
+name    = "Material"
+black   = [33 , 33 , 33 ]
+red     = [244, 67 , 54 ]
+green   = [76 , 175, 80 ]
+yellow  = [255, 235, 59 ]
+blue    = [33 , 150, 243]
+magenta = [156, 39 , 176]
+cyan    = [0  , 188, 212]
+white   = [255, 255, 255]
+
+# Add more colorschemes here if you like or change the existing ones to your taste
+
+#[[colorschemes]]
+#name    = "name of colorscheme"
+#color   = [red  , green  , blue  ] (From 0 to 255)
+#...

@@ -1,31 +1,27 @@
 #include "sm_err.h"
 #include "display.h"
 #include "bus.h"
+#include "lib/toml.h"
 #include <ncurses.h>
 #include <getopt.h>
 
-char *program_name;
-bool show_welcome;
+#define CONFIG_FILE "/etc/servicemaster/servicemaster.toml"
 
-// List of colorschemes
-const char *colors[] = {"default",
-                        "nord",
-                        "solarizeddark",
-                        "dracula",
-                        "monokai",
-                        "gruvboxdark",
-                        "onedark",
-                        "monochrome",
-                        "solarizedlight"};
+char *program_name = NULL;
+bool show_welcome = true;
+bool load_actual = true;
 
 // Help message
-const char *help = "\nUsage: " D_HEADLINE " [options]\n\n"
+const char *help = "\nUsage: servicemaster [options]\n\n"
                    "Options:\n"
                    "  -v  Display the version information and exit\n"
                    "  -w  Do not show the welcome message\n"
                    "  -h  Display this help message and exit\n"
                    "  -c  Set the colorscheme\n"
-                   "  -l  List all available colorschemes\n\n"
+                   "      Colorschemes with a space must be enclosed in quotes!\n"
+                   "  -l  List all available colorschemes\n"
+                   "  -p  Print configuration file (with colorschemes)\n"
+                   "  -e  Edit the configuration file\n\n"
                    "After launching ServiceMaster, you can use the following controls:\n"
                    "- Arrow keys, page up/down: Navigate through the list of units.\n"
                    "- Space: Toggle between system and user units.\n"
@@ -36,7 +32,8 @@ const char *help = "\nUsage: " D_HEADLINE " [options]\n\n"
                    "- +,-: Switch between colorschemes.\n"
                    "- f: Search for units by name.\n\n"
                    "                2025 Lennart Martens\n\n"
-                   "License: MIT\n"
+                   "Configuration and colorschemes are stored in:\n" CONFIG_FILE "\n\n"
+                   "License: MIT Version: " D_VERSION "\n"
                    "For bug reports, feature requests, or general inquiries:\n"
                    "https://github.com/lennart1978/servicemaster\n\n";
 
@@ -47,10 +44,12 @@ static void show_welcome_message()
 {
     const char *welcome_text =
         "Welcome to ServiceMaster!\n\n"
-        "This tool allows you to manage systemd units through an intuitive interface.\n\n"
+        "This tool allows you to manage Systemd units through an intuitive interface.\n\n"
         "SECURITY GUIDELINE:\n"
-        "- Only root can manage system services\n"
-        "- Regular users can only manage their own user services\n\n"
+        "- Only root can manage system services.\n"
+        "- Regular users can only manage their own user services.\n\n"
+        "All colorschemes and settings are stored in the configuration file:\n" CONFIG_FILE "\n"
+        "'man servicemaster' or 'servicemaster -h' for more information.\n\n"
         "Press any key to continue...";
 
     display_status_window(welcome_text, "ServiceMaster " D_VERSION);
@@ -58,15 +57,15 @@ static void show_welcome_message()
 
 static void list_colorschemes()
 {
-    wprintf(L"ServiceMaster " D_VERSION "\n\n");
-    wprintf(L"Available colorschemes:\n");
-    wprintf(L"-----------------------\n\n");
+    printf("\nServiceMaster " D_VERSION "\n\n");
+    printf("Available colorschemes:\n");
+    printf("-----------------------\n\n");
 
-    for (size_t i = 0; i < sizeof(colors) / sizeof(colors[0]); i++)
+    for (int i = 0; i < scheme_count; i++)
     {
-        wprintf(L"%s\n", colors[i]);
+        printf("%s\n", color_schemes[i].name);
     }
-    wprintf(L"\n");
+    printf("\n");
 }
 
 /**
@@ -101,82 +100,105 @@ void wait_input()
  */
 int main(int argc, char *argv[])
 {
-    // Initialize program name and welcome message flag
     program_name = argv[0];
     int option;
-    show_welcome = true;
+    scheme_count = 0;
+    colorscheme = 0;
+    color_schemes = NULL;
+    actual_scheme = NULL;
 
-    // Parse command line options
-    while ((option = getopt(argc, argv, "vwhc:l")) != -1)
+    // Parse command line options first
+    while ((option = getopt(argc, argv, "vwhc:lpe")) != -1)
     {
         switch (option)
         {
         case 'v':
-            wprintf(L"Version: " D_VERSION "\n");
+            printf("Version: " D_VERSION "\n");
             return EXIT_SUCCESS;
-            break;
+
+        case 'h':
+            printf("%s", help);
+            return EXIT_SUCCESS;
+
+        case 'l':
+            // Load colorschemes only when not loaded before
+            if (load_actual)
+            {
+
+                if (!load_color_schemes(CONFIG_FILE))
+                {
+                    sm_err_set("Failed to load colorschemes\n");
+                    return EXIT_FAILURE;
+                }
+            }
+            list_colorschemes();
+
+            // Don't forget to free the color schemes at program exit
+            if (color_schemes)
+                free_color_schemes();
+
+            return EXIT_SUCCESS;
 
         case 'w':
             show_welcome = false;
             break;
 
-        case 'h':
-            wprintf(L"%s", help);
-            return EXIT_SUCCESS;
-            break;
-
         case 'c':
-            if (strcmp(optarg, "nord") == 0)
+            if (!load_color_schemes(CONFIG_FILE))
             {
-                colorscheme = NORD;
-            }
-            else if (strcmp(optarg, "solarizeddark") == 0)
-            {
-                colorscheme = SOLARIZEDDARK;
-            }
-            else if (strcmp(optarg, "dracula") == 0)
-            {
-                colorscheme = DRACULA;
-            }
-            else if (strcmp(optarg, "monokai") == 0)
-            {
-                colorscheme = MONOKAI;
-            }
-            else if (strcmp(optarg, "gruvboxdark") == 0)
-            {
-                colorscheme = GRUVBOXDARK;
-            }
-            else if (strcmp(optarg, "onedark") == 0)
-            {
-                colorscheme = ONEDARK;
-            }
-            else if (strcmp(optarg, "monochrome") == 0)
-            {
-                colorscheme = MONOCHROME;
-            }
-            else if (strcmp(optarg, "solarizedlight") == 0)
-            {
-                colorscheme = SOLARIZEDLIGHT;
-            }
-            else if (strcmp(optarg, "default") == 0)
-            {
-                colorscheme = DEFAULT;
-            }
-            else
-            {
-                wprintf(L"Unknown colorscheme: %s\n", optarg);
+                sm_err_set("Failed to load colorschemes\n");
                 return EXIT_FAILURE;
             }
+            // Find the scheme by name
+            for (int i = 0; i < scheme_count; i++)
+            {
+                if (strcmp(optarg, color_schemes[i].name) == 0)
+                {
+                    colorscheme = i;
+                    break;
+                }
+            }
+            load_actual = false;
             break;
 
-        case 'l':
-            list_colorschemes();
+        case 'p':
+            // Print the configuration file
+            printf("\n\nConfiguration file: " CONFIG_FILE "\n\n");
+            system("cat " CONFIG_FILE "| less");
             return EXIT_SUCCESS;
-            break;
+
+        case 'e':
+            // Edit the configuration file
+            printf("\n\nConfiguration file: " CONFIG_FILE "\n\n");
+            system("sudo $EDITOR " CONFIG_FILE);
+            return EXIT_SUCCESS;
 
         default:
-            wprintf(L"Wrong arguments: Type -h for help\n");
+            printf("Wrong arguments: Type -h for help\n");
             return EXIT_FAILURE;
+        }
+    }
+
+    // Only load colorschemes if not specified on command line
+    if (load_actual)
+    {
+        if (!load_color_schemes(CONFIG_FILE))
+        {
+            sm_err_set("Failed to load colorschemes\n");
+            return EXIT_FAILURE;
+        }
+        if (!load_actual_scheme(CONFIG_FILE))
+        {
+            sm_err_set("Failed to load actual colorscheme\n");
+            return EXIT_FAILURE;
+        }
+        for (int i = 0; i < scheme_count; i++)
+        {
+            if (strcmp(actual_scheme, color_schemes[i].name) == 0)
+            {
+                colorscheme = i;
+                break;
+            }
         }
     }
 
@@ -202,5 +224,7 @@ int main(int argc, char *argv[])
     echo();
     curs_set(1);
 
-    return 0;
+    // Don't forget to free the color schemes at program exit
+    free_color_schemes();
+    return EXIT_SUCCESS;
 }
