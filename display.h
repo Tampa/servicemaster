@@ -47,26 +47,13 @@
 
 extern char *program_name;
 
-/*typedef enum
-{
-    DEFAULT,
-    NORD,
-    SOLARIZEDDARK,
-    DRACULA,
-    MONOKAI,
-    GRUVBOXDARK,
-    ONEDARK,
-    MONOCHROME,
-    SOLARIZEDLIGHT
-} colorscheme_t;*/
-
 typedef struct
 {
     short r, g, b;
 } RGB;
 
 extern int colorscheme;
-extern ColorScheme* color_schemes;
+extern ColorScheme *color_schemes;
 extern int scheme_count;
 
 enum bus_type display_bus_type(void);

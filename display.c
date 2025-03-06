@@ -710,7 +710,10 @@ int display_key_pressed(sd_event_source *s, int fd, uint32_t revents, void *data
 
     case KEY_SPACE:
         if (bus_system_only())
+        {
+            display_status_window("Only system bus is available as root.", "sudo mode !");
             break;
+        }
 
         type ^= 0x1;
         bus = bus_currently_displayed();
