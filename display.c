@@ -10,6 +10,8 @@
 #include <sys/ioctl.h>
 #include "config.h"
 
+#define MAX(a, b) ((a) > (b) ? (a) : (b))
+
 extern char *colors[];
 
 static uint64_t start_time = 0;
@@ -22,6 +24,34 @@ static sd_event *event = NULL;
 static sd_event_source *event_source = NULL;
 
 int colorscheme = 0;
+
+int D_XLOAD = 84;
+int D_XACTIVE = 94;
+int D_XSUB = 104;
+int D_XDESCRIPTION = 114;
+
+void calculate_columns(int terminal_width) {
+    const int MIN_UNIT_WIDTH = 20;      // Minimum width for unit names
+    const int STATE_WIDTH = 12;         // Fixed width for state columns
+    
+    // Unit column gets 50% of the width, but at least MIN_UNIT_WIDTH
+    D_XLOAD = MAX(terminal_width * 0.50, MIN_UNIT_WIDTH);
+    
+    // Each state column gets fixed width
+    D_XACTIVE = D_XLOAD + STATE_WIDTH;
+    D_XSUB = D_XACTIVE + STATE_WIDTH;
+    D_XDESCRIPTION = D_XSUB + STATE_WIDTH;
+    
+    // Ensure we don't exceed terminal width
+    if (D_XDESCRIPTION >= terminal_width - 1) {
+        // Adjust columns to fit within terminal
+        int excess = D_XDESCRIPTION - (terminal_width - 1);
+        D_XLOAD = MAX(MIN_UNIT_WIDTH, D_XLOAD - excess);
+        D_XACTIVE = D_XLOAD + STATE_WIDTH;
+        D_XSUB = D_XACTIVE + STATE_WIDTH;
+        D_XDESCRIPTION = D_XSUB + STATE_WIDTH;
+    }
+}
 
 static void init_color_pairs(void)
 {
@@ -52,7 +82,7 @@ static short rgb_to_ncurses(short value)
     return (short)((value * 1000) / 255);
 }
 
-static void apply_color_scheme(const ColorScheme* scheme)
+static void apply_color_scheme(const ColorScheme *scheme)
 {
     if (!can_change_color())
     {
@@ -62,45 +92,45 @@ static void apply_color_scheme(const ColorScheme* scheme)
     }
 
     // Apply the custom color scheme
-    init_color(COLOR_BLACK, 
-        rgb_to_ncurses(scheme->black[0]),
-        rgb_to_ncurses(scheme->black[1]),
-        rgb_to_ncurses(scheme->black[2]));
-    
+    init_color(COLOR_BLACK,
+               rgb_to_ncurses(scheme->black[0]),
+               rgb_to_ncurses(scheme->black[1]),
+               rgb_to_ncurses(scheme->black[2]));
+
     init_color(COLOR_RED,
-        rgb_to_ncurses(scheme->red[0]),
-        rgb_to_ncurses(scheme->red[1]),
-        rgb_to_ncurses(scheme->red[2]));
-    
+               rgb_to_ncurses(scheme->red[0]),
+               rgb_to_ncurses(scheme->red[1]),
+               rgb_to_ncurses(scheme->red[2]));
+
     init_color(COLOR_GREEN,
-        rgb_to_ncurses(scheme->green[0]),
-        rgb_to_ncurses(scheme->green[1]),
-        rgb_to_ncurses(scheme->green[2]));
-    
+               rgb_to_ncurses(scheme->green[0]),
+               rgb_to_ncurses(scheme->green[1]),
+               rgb_to_ncurses(scheme->green[2]));
+
     init_color(COLOR_YELLOW,
-        rgb_to_ncurses(scheme->yellow[0]),
-        rgb_to_ncurses(scheme->yellow[1]),
-        rgb_to_ncurses(scheme->yellow[2]));
-    
+               rgb_to_ncurses(scheme->yellow[0]),
+               rgb_to_ncurses(scheme->yellow[1]),
+               rgb_to_ncurses(scheme->yellow[2]));
+
     init_color(COLOR_BLUE,
-        rgb_to_ncurses(scheme->blue[0]),
-        rgb_to_ncurses(scheme->blue[1]),
-        rgb_to_ncurses(scheme->blue[2]));
-    
+               rgb_to_ncurses(scheme->blue[0]),
+               rgb_to_ncurses(scheme->blue[1]),
+               rgb_to_ncurses(scheme->blue[2]));
+
     init_color(COLOR_MAGENTA,
-        rgb_to_ncurses(scheme->magenta[0]),
-        rgb_to_ncurses(scheme->magenta[1]),
-        rgb_to_ncurses(scheme->magenta[2]));
-    
+               rgb_to_ncurses(scheme->magenta[0]),
+               rgb_to_ncurses(scheme->magenta[1]),
+               rgb_to_ncurses(scheme->magenta[2]));
+
     init_color(COLOR_CYAN,
-        rgb_to_ncurses(scheme->cyan[0]),
-        rgb_to_ncurses(scheme->cyan[1]),
-        rgb_to_ncurses(scheme->cyan[2]));
-    
+               rgb_to_ncurses(scheme->cyan[0]),
+               rgb_to_ncurses(scheme->cyan[1]),
+               rgb_to_ncurses(scheme->cyan[2]));
+
     init_color(COLOR_WHITE,
-        rgb_to_ncurses(scheme->white[0]),
-        rgb_to_ncurses(scheme->white[1]),
-        rgb_to_ncurses(scheme->white[2]));
+               rgb_to_ncurses(scheme->white[0]),
+               rgb_to_ncurses(scheme->white[1]),
+               rgb_to_ncurses(scheme->white[2]));
 }
 
 /**
@@ -113,7 +143,7 @@ static void apply_color_scheme(const ColorScheme* scheme)
 static void display_service_row(Service *svc, int row, int spc)
 {
     int i;
-    char short_unit[D_XLOAD - 2];
+    char short_unit[D_XLOAD - 4];
     char short_unit_file_state[10];
     char *short_description;
     size_t maxx_description = getmaxx(stdscr) - D_XDESCRIPTION - 1;
@@ -123,11 +153,11 @@ static void display_service_row(Service *svc, int row, int spc)
         mvaddch(row + spc, i, ' ');
 
     // If the unit name is too long, truncate it and add ...
-    if (strlen(svc->unit) >= D_XLOAD - 3)
+    if (strlen(svc->unit) >= (size_t)(D_XLOAD - (4 + 1))) // 4 for ... and 1 for null terminator
     {
-        strncpy(short_unit, svc->unit, D_XLOAD - 2);
+        strncpy(short_unit, svc->unit, D_XLOAD - 5);
         mvaddstr(row + spc, 1, short_unit);
-        mvaddstr(row + spc, D_XLOAD - 4, "...");
+        mvaddstr(row + spc, D_XLOAD - 5, "...");
     }
     else
         mvaddstr(row + spc, 1, svc->unit);
@@ -789,7 +819,8 @@ int display_key_pressed(sd_event_source *s, int fd, uint32_t revents, void *data
         break;
 
     case '+':
-        if (colorscheme < scheme_count - 1) {
+        if (colorscheme < scheme_count - 1)
+        {
             colorscheme++;
             apply_color_scheme(&color_schemes[colorscheme]);
             set_color_scheme(colorscheme);
@@ -798,7 +829,8 @@ int display_key_pressed(sd_event_source *s, int fd, uint32_t revents, void *data
         break;
 
     case '-':
-        if (colorscheme > 0) {
+        if (colorscheme > 0)
+        {
             colorscheme--;
             apply_color_scheme(&color_schemes[colorscheme]);
             set_color_scheme(colorscheme);
@@ -965,7 +997,7 @@ void display_set_bus_type(enum bus_type ty)
  *
  * This function is called when the terminal window is resized. It:
  * 1. Gets the new terminal dimensions
- * 2. Resizes the screen buffer to match
+ * 2. Resizes the screen buffer and recalculates column widths
  * 3. Redraws the entire display
  *
  * @param sig Signal number (unused)
@@ -973,18 +1005,31 @@ void display_set_bus_type(enum bus_type ty)
 static void handle_winch(int sig)
 {
     (void)sig;
-    Bus *current_bus = bus_currently_displayed();
     struct winsize size;
-
-    // Get the current terminal size
     ioctl(STDOUT_FILENO, TIOCGWINSZ, &size);
-
-    // Terminal size has changed, resize the screen
-    resizeterm(size.ws_row, size.ws_col);
-
-    // Redraw the screen
+    
+    // Clear the entire screen and reset cursor
+    endwin();
+    refresh();
     clear();
-    display_redraw(current_bus);
+    
+    // Recalculate terminal size
+    resizeterm(size.ws_row, size.ws_col);
+    
+    // Recalculate column widths for new terminal size
+    calculate_columns(size.ws_col);
+    
+    // Reset input handling
+    keypad(stdscr, TRUE);
+    nodelay(stdscr, TRUE);
+    set_escdelay(0);
+    
+    // Reset mouse handling
+    mousemask(ALL_MOUSE_EVENTS | REPORT_MOUSE_POSITION, NULL);
+    printf("\033[?1003h\n"); // Enable extended mouse events
+    
+    // Redraw everything
+    display_redraw(bus_currently_displayed());
     refresh();
 }
 
@@ -1067,6 +1112,10 @@ void display_init(void)
 
     mousemask(ALL_MOUSE_EVENTS | REPORT_MOUSE_POSITION, NULL);
     printf("\033[?1003h\n"); // Extended mouse events enabled
+
+    struct winsize size;
+    ioctl(STDOUT_FILENO, TIOCGWINSZ, &size);
+    calculate_columns(size.ws_col);
 
     start_color();
 
@@ -1153,7 +1202,7 @@ void display_status_window(const char *status, const char *title)
     if (rows == 0)
         wattron(win, COLOR_PAIR(RED_BLACK));
     else
-         !strcmp(color_schemes[colorscheme].name, "Solarized Light") ? wattron(win, COLOR_PAIR(MAGENTA_BLACK)) : wattron(win, COLOR_PAIR(BLACK_WHITE));
+        !strcmp(color_schemes[colorscheme].name, "Solarized Light") ? wattron(win, COLOR_PAIR(MAGENTA_BLACK)) : wattron(win, COLOR_PAIR(BLACK_WHITE));
 
     line_start = status_cpy;
     while ((line_end = strchr(line_start, '\n')) != NULL)

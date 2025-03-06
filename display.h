@@ -15,13 +15,13 @@
 #define D_FUNCTIONS "F1:START F2:STOP F3:RESTART F4:ENABLE F5:DISABLE F6:MASK F7:UNMASK F8:RELOAD"
 #define D_SERVICE_TYPES "a:ALL d:DEV i:SLICE s:SERVICE o:SOCKET t:TARGET r:TIMER m:MOUNT c:SCOPE n:AMOUNT w:SWAP p:PATH h:SSHOT"
 #define D_HEADLINE "ServiceMaster " D_VERSION
-#define D_NAVIGATION_BASE "Left/Right: Modus | Up/Down: Select | Return: Show status | PageUp/Down: Scroll | f: Search | Space: System/User | +,-: Theme = %s"
+#define D_NAVIGATION_BASE "Left/Right:Modus|Up/Down:Select|Return:Status|PageUp/Down:Scroll|f:Search|Space:Sys/Usr|+,-:Theme=%s"
 #define D_QUIT "q/ESC:Quit"
 
-#define D_XLOAD 84
-#define D_XACTIVE 94
-#define D_XSUB 104
-#define D_XDESCRIPTION 114
+extern int D_XLOAD;
+extern int D_XACTIVE;
+extern int D_XSUB;
+extern int D_XDESCRIPTION;
 
 #define D_MODE(m)        \
     {                    \
