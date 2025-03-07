@@ -2,7 +2,7 @@
 # -=ServiceMaster=- Configuration File
 
 # When no colorscheme is specified, this one will be used
-actual_colorscheme = "Solarized Dark"
+actual_colorscheme = "Gruvbox Dark"
 
 # Light colorschemes (like Solarized Light, Monochrome)
 # often need special implementations in the program

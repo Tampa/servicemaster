@@ -7,6 +7,9 @@
 
 #define CONFIG_FILE "/etc/servicemaster/servicemaster.toml"
 
+// Default editor
+#define STANDARD_EDITOR "$EDITOR"
+
 char *program_name = NULL;
 bool show_welcome = true;
 bool load_actual = true;
@@ -18,7 +21,7 @@ const char *help = "\nUsage: servicemaster [options]\n\n"
                    "  -w  Do not show the welcome message\n"
                    "  -h  Display this help message and exit\n"
                    "  -c  Set the colorscheme\n"
-                   "      Colorschemes with a space must be enclosed in quotes!\n"
+                   "      Names with a space must be enclosed in quotes!\n"
                    "  -l  List all available colorschemes\n"
                    "  -p  Print configuration file (with colorschemes)\n"
                    "  -e  Edit the configuration file\n\n"
@@ -56,6 +59,13 @@ static void show_welcome_message()
 }
 */
 
+/**
+ * Lists all available color schemes to stdout.
+ *
+ * Prints a formatted list of all color scheme names that are currently
+ * loaded in the color_schemes array. The output includes a header with
+ * the ServiceMaster version and decorative separators.
+ */
 static void list_colorschemes()
 {
     printf("\nServiceMaster " D_VERSION "\n\n");
@@ -93,14 +103,9 @@ void wait_input()
     return;
 }
 
-/**
- * The main entry point of the application.
- * This function initializes the screen, retrieves all systemd services,
- * filters them, and then enters a loop to wait for user input.
- * The function returns 0 on successful exit, or -1 on error.
- */
 int main(int argc, char *argv[])
 {
+    setup_signal_handlers();
     program_name = argv[0];
     int option;
     scheme_count = 0;
@@ -108,7 +113,8 @@ int main(int argc, char *argv[])
     color_schemes = NULL;
     actual_scheme = NULL;
 
-    // Parse command line options first
+    // Parse command line options using getopt
+    // v: version, w: no welcome, h: help, c: colorscheme, l: list schemes, p: print config, e: edit config
     while ((option = getopt(argc, argv, "vwhc:lpe")) != -1)
     {
         switch (option)
@@ -122,10 +128,9 @@ int main(int argc, char *argv[])
             return EXIT_SUCCESS;
 
         case 'l':
-            // Load colorschemes only when not loaded before
+            // Load and display available colorschemes if not already loaded
             if (load_actual)
             {
-
                 if (!load_color_schemes(CONFIG_FILE))
                 {
                     sm_err_set("Failed to load colorschemes\n");
@@ -134,7 +139,7 @@ int main(int argc, char *argv[])
             }
             list_colorschemes();
 
-            // Don't forget to free the color schemes at program exit
+            // Cleanup color schemes before exit
             if (color_schemes)
                 free_color_schemes();
 
@@ -145,12 +150,13 @@ int main(int argc, char *argv[])
             break;
 
         case 'c':
+            // Load colorschemes and set the specified scheme
             if (!load_color_schemes(CONFIG_FILE))
             {
                 sm_err_set("Failed to load colorschemes\n");
                 return EXIT_FAILURE;
             }
-            // Find the scheme by name
+            // Search for matching colorscheme name
             for (int i = 0; i < scheme_count; i++)
             {
                 if (strcmp(optarg, color_schemes[i].name) == 0)
@@ -163,15 +169,19 @@ int main(int argc, char *argv[])
             break;
 
         case 'p':
-            // Print the configuration file
-            printf("\n\nConfiguration file: " CONFIG_FILE "\n\n");
-            system("cat " CONFIG_FILE "| less");
+            // Display configuration file
+            print_file(CONFIG_FILE);
             return EXIT_SUCCESS;
 
         case 'e':
-            // Edit the configuration file
+            // Open configuration file in default editor with sudo
             printf("\n\nConfiguration file: " CONFIG_FILE "\n\n");
-            system("sudo $EDITOR " CONFIG_FILE);
+            if (system("sudo " STANDARD_EDITOR " " CONFIG_FILE) != 0)
+            {
+                // If system call fails, print an error message
+                sm_err_set("Failed to edit configuration file\n");
+                return EXIT_FAILURE;
+            }
             return EXIT_SUCCESS;
 
         default:
@@ -180,7 +190,7 @@ int main(int argc, char *argv[])
         }
     }
 
-    // Only load colorschemes if not specified on command line
+    // Load default colorscheme if none specified via command line
     if (load_actual)
     {
         if (!load_color_schemes(CONFIG_FILE))
@@ -193,6 +203,7 @@ int main(int argc, char *argv[])
             sm_err_set("Failed to load actual colorscheme\n");
             return EXIT_FAILURE;
         }
+        // Find and set the default colorscheme
         for (int i = 0; i < scheme_count; i++)
         {
             if (strcmp(actual_scheme, color_schemes[i].name) == 0)
@@ -203,26 +214,29 @@ int main(int argc, char *argv[])
         }
     }
 
-    // Set bus type based on user or root
+    // Set bus type to USER for regular users, SYSTEM for root
     if (geteuid())
         display_set_bus_type(USER);
     else
         display_set_bus_type(SYSTEM);
 
-    // Initialize bus and display
+    // Initialize the application
     bus_init();
     display_init();
 
+    // Show welcome message if enabled
+    // Draw initial display
     display_redraw(bus_currently_displayed());
 
+    // Enter main input loop
     wait_input();
 
-    // Restore terminal state before exit
+    // Cleanup and restore terminal state
     endwin();
     echo();
     curs_set(1);
 
-    // Don't forget to free the color schemes at program exit
+    // Free allocated color schemes
     free_color_schemes();
     return EXIT_SUCCESS;
 }

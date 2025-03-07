@@ -1,7 +1,7 @@
 project(
     'ServiceMaster',
     'c',
-    version: '1.7.0',
+    version: '1.7.2',
     default_options: ['warning_level=3', 'buildtype=release', 'strip=true', 'c_std=c99'],
 )
 
@@ -22,17 +22,18 @@ executable(
     install_dir: get_option('bindir'),
 )
 
-# Install the man page to the correct location
-install_data(
-    'servicemaster.1',
-    install_dir: join_paths(get_option('mandir'), 'man1')
-)
+install_data('servicemaster.1', install_dir: join_paths(get_option('mandir'), 'man1'))
 
-# Install config file to /etc/servicemaster
 config_dir = '/etc/servicemaster'
-install_data(
-    'servicemaster.toml',
-    install_dir: config_dir,
-)
 
 meson.add_install_script('mkdir', '-p', config_dir)
+
+meson.add_install_script(
+    'sh',
+    '-c',
+    'if [ ! -f "'
+    + config_dir
+    + '/servicemaster.toml" ]; then cp "@SOURCE_ROOT@/servicemaster.toml" "'
+    + config_dir
+    + '/servicemaster.toml"; fi',
+)

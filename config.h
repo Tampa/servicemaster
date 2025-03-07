@@ -7,6 +7,7 @@
 #include <string.h>
 #include <stdint.h> // Für int64_t
 #include "lib/toml.h"
+#include <ncurses.h>
 
 #define NUM_COLORS 8
 
@@ -31,5 +32,8 @@ int parse_rgb_array(toml_array_t *arr, int *rgb, const char *color_name, const c
 int parse_color_scheme(toml_table_t *table);
 int load_color_schemes(const char *filename);
 int load_actual_scheme(const char *filename);
+void print_file(const char *filename);
+void cleanup_handler(int signum);
+void setup_signal_handlers();
 
 #endif
