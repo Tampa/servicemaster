@@ -8,7 +8,7 @@
 #define CONFIG_FILE "/etc/servicemaster/servicemaster.toml"
 
 // Default editor, print command and pager
-#define STANDARD_EDITOR "nano"
+#define STANDARD_EDITOR "$EDITOR"
 #define PRINT_COMMAND "cat"
 #define PAGER "less"
 
