@@ -1025,17 +1025,6 @@ static void handle_winch(int sig)
         return; // Exit if we can't get window size
     }
 
-    // Ensure minimum dimensions
-    if (size.ws_row < 10 || size.ws_col < 112)
-    {
-        display_status_window("Terminal too small !", "Error");
-        return; // Exit if window too small
-    }
-
-    endwin();
-    refresh();
-    clear();
-
     // Add error checking for resizeterm
     if (resizeterm(size.ws_row, size.ws_col) == ERR)
     {
@@ -1047,6 +1036,8 @@ static void handle_winch(int sig)
     // Reset terminal properties safely
     keypad(stdscr, TRUE);
     nodelay(stdscr, TRUE);
+
+    clear();
 
     // Redraw with error checking
     Bus *current_bus = bus_currently_displayed();
