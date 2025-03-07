@@ -135,7 +135,7 @@ You can edit it with:
 servicemaster -e
 ```
 
-This will open the TOML config file with your standard editor ($EDITOR) 
+This will open the TOML config file with your standard editor ($EDITOR)
 
 Print the configuration file with:
 
@@ -143,19 +143,19 @@ Print the configuration file with:
 servicemaster -p
 ```
 
-This will just print with cat piped to less (cat config.toml | less)
+This will just print the config file to stdout, including the size of the file
 
 ## Colorschemes
 
-You can add your own colorschemes to the configuration file or change the existing ones
+You can add your own colorschemes to the configuration file or change the existing ones.
 
-You can list all available colorschemes with:
+List all available colorschemes with:
 
 ```bash
 servicemaster -l
 ```
 
-You can switch between colorschemes with the '+' and '-' keys.
+Switch between colorschemes using the '+' and '-' keys.
 
 ### Screenshots with 10 different colorschemes (Kitty terminal, Nerd Fonts)
 

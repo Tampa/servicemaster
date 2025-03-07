@@ -7,10 +7,8 @@
 
 #define CONFIG_FILE "/etc/servicemaster/servicemaster.toml"
 
-// Default editor, print command and pager
+// Default editor
 #define STANDARD_EDITOR "$EDITOR"
-#define PRINT_COMMAND "cat"
-#define PAGER "less"
 
 char *program_name = NULL;
 bool show_welcome = true;
@@ -62,7 +60,7 @@ static void show_welcome_message()
 
 /**
  * Lists all available color schemes to stdout.
- * 
+ *
  * Prints a formatted list of all color scheme names that are currently
  * loaded in the color_schemes array. The output includes a header with
  * the ServiceMaster version and decorative separators.
@@ -103,7 +101,6 @@ void wait_input()
     sd_event_unref(ev);
     return;
 }
-
 
 int main(int argc, char *argv[])
 {
@@ -170,14 +167,8 @@ int main(int argc, char *argv[])
             break;
 
         case 'p':
-            // Display configuration file using less pager
-            printf("\n\nConfiguration file: " CONFIG_FILE "\n\n");
-            if (system(PRINT_COMMAND " " CONFIG_FILE " | " PAGER) != 0)
-            {
-                // If system call fails, print an error message
-                sm_err_set("Failed to print configuration file\n");
-                return EXIT_FAILURE;
-            }
+            // Display configuration file
+            print_file(CONFIG_FILE);
             return EXIT_SUCCESS;
 
         case 'e':

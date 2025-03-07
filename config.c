@@ -10,9 +10,36 @@ const char *color_names[NUM_COLORS] = {
     "black", "white", "green", "yellow",
     "red", "magenta", "cyan", "blue"};
 
+// Function to print a (TOML) file
+void print_file(const char *filename)
+{
+    FILE *fp = fopen(filename, "r");
+    if (!fp)
+    {
+        perror("Error opening file");
+        return;
+    }
+    size_t l;
+    fseek(fp, 0, SEEK_END);
+    l = ftell(fp);
+    fseek(fp, 0, SEEK_SET);
+
+    printf("\nFile: %s | %ldKB\n", filename, l / 1024);
+    printf("--------------------------------------------------\n\n");
+
+    char *line = NULL;
+    while (getline(&line, &l, fp) != -1)
+    {
+        printf("%s", line);
+    }
+    free(line);
+
+    fclose(fp);
+}
+
 /**
  * Frees all allocated memory for color schemes.
- * 
+ *
  * This function:
  * 1. Frees each scheme's name string
  * 2. Frees the color_schemes array
@@ -159,7 +186,7 @@ int parse_color_scheme(toml_table_t *table)
     // Add to array
     ColorScheme *tmp = realloc(color_schemes, (scheme_count + 1) * sizeof(ColorScheme));
     if (!tmp)
-    {        
+    {
         fprintf(stderr, "Memory allocation failed for scheme '%s'\n", scheme.name);
         free(scheme.name);
         return 0;
