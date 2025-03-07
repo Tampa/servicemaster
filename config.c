@@ -1,4 +1,5 @@
 #include "config.h"
+#include <signal.h>
 
 // Global variables for color schemes
 char *actual_scheme = NULL;
@@ -10,6 +11,63 @@ const char *color_names[NUM_COLORS] = {
     "black", "white", "green", "yellow",
     "red", "magenta", "cyan", "blue"};
 
+/**
+ * Signal handler for cleaning up resources before program termination.
+ *
+ * This function is called when a termination signal is received. It performs
+ * necessary cleanup by:
+ * 1. Freeing color scheme resources
+ * 2. Freeing the current color scheme name
+ * 3. Printing a cleanup message
+ * 4. Exiting the program with the received signal number
+ *
+ * @param signum The signal number that triggered the handler
+ */
+void cleanup_handler(int signum)
+{
+    free_color_schemes();
+    free(actual_scheme);
+
+    // Reset terminal settings
+    endwin();
+    reset_shell_mode();
+    fflush(stdout);
+    fflush(stderr);
+    fflush(stdin);
+    // Print Signal message
+    printf("\nSignal: %s !\nAll memory freed. Exiting...\n\n", strsignal(signum));
+    curs_set(1);
+    // Exit with the signal number
+    exit(signum);
+}
+
+/**
+ * Configures signal handlers for graceful program termination.
+ *
+ * Sets up signal handlers for common termination and error signals (SIGINT, SIGTERM,
+ * SIGABRT, SIGSEGV ...) to invoke the cleanup_handler, ensuring proper resource cleanup
+ * before program exit.
+ */
+void setup_signal_handlers()
+{
+    struct sigaction sa;
+    sa.sa_handler = cleanup_handler;
+    sigemptyset(&sa.sa_mask);
+    sa.sa_flags = 0;
+
+    // Setup signal handlers
+    sigaction(SIGINT, &sa, NULL);  // Interrupt signal from keyboard
+    sigaction(SIGTERM, &sa, NULL); // Terminate signal from kill(1)
+    sigaction(SIGABRT, &sa, NULL); // Abort signal from abort(3)
+    sigaction(SIGSEGV, &sa, NULL); // Segmentation fault
+    sigaction(SIGHUP, &sa, NULL);  // Hangup detected
+    sigaction(SIGQUIT, &sa, NULL); // Quit signal (Ctrl+\)
+    sigaction(SIGILL, &sa, NULL);  // Illegal instruction
+    sigaction(SIGFPE, &sa, NULL);  // Floating point exception
+    sigaction(SIGBUS, &sa, NULL);  // Bus error (bad memory access)
+    sigaction(SIGPIPE, &sa, NULL); // Broken pipe
+    sigaction(SIGSYS, &sa, NULL);  // Bad system call
+}
 // Function to print a (TOML) file
 void print_file(const char *filename)
 {
@@ -247,8 +305,6 @@ int load_color_schemes(const char *filename)
     }
 
     int arr_len = toml_array_nelem(schemes);
-    // Remove or comment out debug output
-    // printf("Found %d color schemes in file\n", arr_len);
 
     for (int i = 0; i < arr_len; i++)
     {
@@ -319,9 +375,6 @@ int load_actual_scheme(const char *filename)
         toml_free(root);
         return 0;
     }
-
-    // Remove or comment out debug output
-    // printf("Actual colorscheme: %s\n", actual_scheme);
 
     toml_free(root);
     return 1;

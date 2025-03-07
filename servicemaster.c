@@ -104,6 +104,7 @@ void wait_input()
 
 int main(int argc, char *argv[])
 {
+    setup_signal_handlers();
     program_name = argv[0];
     int option;
     scheme_count = 0;
