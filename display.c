@@ -39,20 +39,22 @@ int D_XDESCRIPTION = 114;
  *
  * @param terminal_width Total width of the terminal screen
  */
-void calculate_columns(int terminal_width) {
-    const int MIN_UNIT_WIDTH = 20;      // Minimum width for unit names
-    const int STATE_WIDTH = 10;         // Fixed width for state columns
-    
+void calculate_columns(int terminal_width)
+{
+    const int MIN_UNIT_WIDTH = 20; // Minimum width for unit names
+    const int STATE_WIDTH = 10;    // Fixed width for state columns
+
     // Unit column gets 50% of the width, but at least MIN_UNIT_WIDTH
     D_XLOAD = MAX(terminal_width * 0.50, MIN_UNIT_WIDTH);
-    
+
     // Each state column gets fixed width
     D_XACTIVE = D_XLOAD + STATE_WIDTH;
     D_XSUB = D_XACTIVE + STATE_WIDTH;
     D_XDESCRIPTION = D_XSUB + STATE_WIDTH;
-    
+
     // Ensure we don't exceed terminal width
-    if (D_XDESCRIPTION >= terminal_width - 1) {
+    if (D_XDESCRIPTION >= terminal_width - 1)
+    {
         // Adjust columns to fit within terminal
         int excess = D_XDESCRIPTION - (terminal_width - 1);
         D_XLOAD = MAX(MIN_UNIT_WIDTH, D_XLOAD - excess);
@@ -1015,30 +1017,44 @@ static void handle_winch(int sig)
 {
     (void)sig;
     struct winsize size;
-    ioctl(STDOUT_FILENO, TIOCGWINSZ, &size);
-    
-    // Clear the entire screen and reset cursor
+
+    // Get new dimensions safely
+    if (ioctl(STDOUT_FILENO, TIOCGWINSZ, &size) == -1)
+    {
+        display_status_window("Error getting window size", "Error");
+        return; // Exit if we can't get window size
+    }
+
+    // Ensure minimum dimensions
+    if (size.ws_row < 10 || size.ws_col < 112)
+    {
+        display_status_window("Terminal too small !", "Error");
+        return; // Exit if window too small
+    }
+
     endwin();
     refresh();
     clear();
-    
-    // Recalculate terminal size
-    resizeterm(size.ws_row, size.ws_col);
-    
-    // Recalculate column widths for new terminal size
+
+    // Add error checking for resizeterm
+    if (resizeterm(size.ws_row, size.ws_col) == ERR)
+    {
+        return;
+    }
+
     calculate_columns(size.ws_col);
-    
-    // Reset input handling
+
+    // Reset terminal properties safely
     keypad(stdscr, TRUE);
     nodelay(stdscr, TRUE);
-    set_escdelay(0);
-    
-    // Reset mouse handling
-    mousemask(ALL_MOUSE_EVENTS | REPORT_MOUSE_POSITION, NULL);
-    printf("\033[?1003h\n"); // Enable extended mouse events
-    
-    // Redraw everything
-    display_redraw(bus_currently_displayed());
+
+    // Redraw with error checking
+    Bus *current_bus = bus_currently_displayed();
+    if (current_bus)
+    {
+        display_redraw(current_bus);
+    }
+
     refresh();
 }
 
