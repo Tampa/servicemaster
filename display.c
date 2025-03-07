@@ -30,9 +30,18 @@ int D_XACTIVE = 94;
 int D_XSUB = 104;
 int D_XDESCRIPTION = 114;
 
+/**
+ * Calculates column widths for display based on terminal width.
+ *
+ * Dynamically adjusts column positions for unit names, active state,
+ * sub-state, and description columns. Ensures columns fit within
+ * terminal width while maintaining minimum unit name width.
+ *
+ * @param terminal_width Total width of the terminal screen
+ */
 void calculate_columns(int terminal_width) {
     const int MIN_UNIT_WIDTH = 20;      // Minimum width for unit names
-    const int STATE_WIDTH = 12;         // Fixed width for state columns
+    const int STATE_WIDTH = 10;         // Fixed width for state columns
     
     // Unit column gets 50% of the width, but at least MIN_UNIT_WIDTH
     D_XLOAD = MAX(terminal_width * 0.50, MIN_UNIT_WIDTH);
@@ -153,11 +162,11 @@ static void display_service_row(Service *svc, int row, int spc)
         mvaddch(row + spc, i, ' ');
 
     // If the unit name is too long, truncate it and add ...
-    if (strlen(svc->unit) >= (size_t)(D_XLOAD - (4 + 1))) // 4 for ... and 1 for null terminator
+    if (strlen(svc->unit) >= (size_t)(D_XLOAD - 4))
     {
-        strncpy(short_unit, svc->unit, D_XLOAD - 5);
+        strncpy(short_unit, svc->unit, D_XLOAD - 4);
         mvaddstr(row + spc, 1, short_unit);
-        mvaddstr(row + spc, D_XLOAD - 5, "...");
+        mvaddstr(row + spc, D_XLOAD - 4, "...");
     }
     else
         mvaddstr(row + spc, 1, svc->unit);
