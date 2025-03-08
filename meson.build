@@ -32,8 +32,7 @@ meson.add_install_script(
     'sh',
     '-c',
     'if [ ! -f "'
-    + config_dir
-    + '/servicemaster.toml" ]; then cp "@SOURCE_ROOT@/servicemaster.toml" "'
-    + config_dir
-    + '/servicemaster.toml"; fi',
+    + config_dir + '/servicemaster.toml" ]; then cp "' 
+    + meson.project_source_root() + '/servicemaster.toml" "'
+    + config_dir + '/servicemaster.toml"; fi',
 )
