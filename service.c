@@ -2,6 +2,7 @@
 #include "service.h"
 #include "display.h"
 #include <systemd/sd-journal.h>
+#include <stdlib.h> // For qsort
 
 const char *service_str_types[] = {
     "all",
@@ -344,11 +345,13 @@ Service *service_init(const char *name)
 
 /* Return the nth service in the list, accounting for the enabled
  * filter */
-Service *service_nth(Bus *bus, int n) {
+Service *service_nth(Bus *bus, int n)
+{
     int i = 0;
     Service *svc;
 
-    TAILQ_FOREACH(svc, &bus->services, e) {
+    TAILQ_FOREACH(svc, &bus->services, e)
+    {
         if (display_mode() != ALL && svc->type != display_mode())
             continue;
 
@@ -545,4 +548,55 @@ fin:
 const char *service_string_type(enum service_type type)
 {
     return service_str_types[type];
+}
+
+/**
+ * Sorts the services in the bus using a custom comparison function.
+ *
+ * @param bus The bus containing the services to be sorted
+ * @param compare_func The comparison function for sorting
+ */
+void service_sort(Bus *bus, int (*compare_func)(const void *, const void *))
+{
+    // Count the number of services in the bus
+    int count = 0;
+    Service *svc;
+    TAILQ_FOREACH(svc, &bus->services, e)
+    {
+        count++;
+    }
+
+    if (count == 0)
+    {
+        return; // No services to sort
+    }
+
+    // Create a temporary array with the services
+    Service **services_array = malloc(count * sizeof(Service *));
+    if (!services_array)
+    {
+        sm_err_set("Error allocating memory for sorting");
+        return;
+    }
+
+    // Fill the array with services
+    int i = 0;
+    while (!TAILQ_EMPTY(&bus->services))
+    {
+        svc = TAILQ_FIRST(&bus->services);
+        TAILQ_REMOVE(&bus->services, svc, e);
+        services_array[i++] = svc;
+    }
+
+    // Sort the array with the provided comparison function
+    qsort(services_array, count, sizeof(Service *), compare_func);
+
+    // Add the sorted services back to the list
+    for (i = 0; i < count; i++)
+    {
+        TAILQ_INSERT_TAIL(&bus->services, services_array[i], e);
+    }
+
+    // Free the temporary array
+    free(services_array);
 }

@@ -14,6 +14,9 @@ char *program_name = NULL;
 bool show_welcome = true;
 bool load_actual = true;
 
+// External function to reset the terminal window title
+extern void reset_terminal_title(void);
+
 // Help message
 const char *help = "\nUsage: servicemaster [options]\n\n"
                    "Options:\n"
@@ -33,7 +36,8 @@ const char *help = "\nUsage: servicemaster [options]\n\n"
                    "- a-z: Quick filter units by type.\n"
                    "- q or ESC: Quit the application.\n"
                    "- +,-: Switch between colorschemes.\n"
-                   "- f: Search for units by name.\n\n"
+                   "- f: Search for units by name.\n"
+                   "- Tab: Select column to sort, Return: Sort.\n\n"
                    "                2025 Lennart Martens\n\n"
                    "Configuration and colorschemes are stored in:\n" CONFIG_FILE "\n\n"
                    "License: MIT Version: " D_VERSION "\n"
@@ -232,6 +236,7 @@ int main(int argc, char *argv[])
     wait_input();
 
     // Cleanup and restore terminal state
+    reset_terminal_title();
     endwin();
     echo();
     curs_set(1);

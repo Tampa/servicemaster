@@ -5,7 +5,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <stdint.h> // Für int64_t
+#include <stdint.h> // For int64_t
 #include "lib/toml.h"
 #include <ncurses.h>
 

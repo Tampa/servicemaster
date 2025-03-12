@@ -1,4 +1,4 @@
-# ServiceMaster 1.7.2
+# ServiceMaster 1.7.4
 
 ServiceMaster is a powerful terminal-based tool for managing Systemd units on Linux systems. It provides an intuitive interface for viewing and controlling system and user units, making it easier to manage your units without leaving the command line.
 
@@ -14,6 +14,7 @@ ServiceMaster is a powerful terminal-based tool for managing Systemd units on Li
 - Switch between colorschemes, edit or add colorschemes
 - Easy configuration with TOML file
 - Search for units by name
+- Sort units by different columns (unit name, state, active, sub, description)
 
 ## Requirements
 
@@ -33,6 +34,7 @@ After launching ServiceMaster, you can use the following controls:
 - q or ESC: Quit the application
 - +,-: Switch between colorschemes
 - f: Search for units by name
+- Tab: Select column header, Return: Sort by selected column
 
 ## CLI Options
 
@@ -61,7 +63,7 @@ Lennart Martens
 
 ## Version
 
-1.7.2 (2025)
+1.7.4 (2025)
 
 ## Building & Install
 
@@ -93,7 +95,7 @@ meson setup builddir --buildtype=release --prefix=/usr/local
 meson compile -C builddir
 ```
 
-### If you want to update from a very old version (< 1.6.0), remove the old version first!
+### If you want to update from a very old version (< 1.6.0), remove the old version first
 
 ```bash
  sudo rm /usr/bin/servicemaster && sudo rm /usr/share/man/man1/servicemaster.1

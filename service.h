@@ -8,7 +8,8 @@
 
 typedef struct service_list service_list;
 
-enum operation {
+enum operation
+{
     START,
     STOP,
     RESTART,
@@ -20,7 +21,8 @@ enum operation {
     MAX_OPERATIONS
 };
 
-enum service_type {
+enum service_type
+{
     ALL,
     DEVICE,
     SLICE,
@@ -38,7 +40,8 @@ enum service_type {
     MAX_TYPES
 };
 
-typedef struct Service {
+typedef struct Service
+{
     int ypos;
     int changed;
     uint64_t last_update;
@@ -66,31 +69,41 @@ typedef struct Service {
     uint64_t cpu_usage;
 
     char *cgroup;
-    char *sysfs_path;       // For DEVICE
-    char *mount_where;      // For MOUNT
-    char *mount_what;       // For MOUNT
-    uint64_t next_elapse;   // For TIMER
-    uint32_t backlog;       // For SOCKET
-    char *bind_ipv6_only;   // For SOCKET
+    char *sysfs_path;     // For DEVICE
+    char *mount_where;    // For MOUNT
+    char *mount_what;     // For MOUNT
+    uint64_t next_elapse; // For TIMER
+    uint32_t backlog;     // For SOCKET
+    char *bind_ipv6_only; // For SOCKET
 
     enum service_type type;
     sd_bus_slot *slot;
 
-    TAILQ_ENTRY(Service) e;
+    TAILQ_ENTRY(Service)
+    e;
 } Service;
 
 TAILQ_HEAD(service_list, Service);
 
 #include "bus.h"
-Service * service_get_name(Bus *bus, const char *name);
-Service * service_init(const char *name);
-Service * service_next(Service *svc);
-Service * service_nth(Bus *bus, int n);
-Service * service_ypos(Bus *bus, int ypos);
-char * service_status_info(Bus *bus, Service *svc);
-const char * service_string_type(enum service_type type);
+Service *service_get_name(Bus *bus, const char *name);
+Service *service_init(const char *name);
+Service *service_next(Service *svc);
+Service *service_nth(Bus *bus, int n);
+Service *service_ypos(Bus *bus, int ypos);
+char *service_status_info(Bus *bus, Service *svc);
+const char *service_string_type(enum service_type type);
 uint64_t service_now(void);
 void service_insert(Bus *bus, Service *svc);
 void services_invalidate_ypos(Bus *bus);
 void services_prune_dead_units(Bus *bus, uint64_t ts);
+
+/**
+ * Sortiert die Services im Bus anhand einer benutzerdefinierten Vergleichsfunktion.
+ *
+ * @param bus Der Bus mit den zu sortierenden Services
+ * @param compare_func Die Vergleichsfunktion für die Sortierung
+ */
+void service_sort(Bus *bus, int (*compare_func)(const void *, const void *));
+
 #endif
