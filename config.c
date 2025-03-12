@@ -1,6 +1,9 @@
 #include "config.h"
 #include <signal.h>
 
+// External function to reset the terminal window title
+extern void reset_terminal_title(void);
+
 // Global variables for color schemes
 char *actual_scheme = NULL;
 ColorScheme *color_schemes = NULL;
@@ -29,6 +32,7 @@ void cleanup_handler(int signum)
     free(actual_scheme);
 
     // Reset terminal settings
+    reset_terminal_title();
     endwin();
     reset_shell_mode();
     fflush(stdout);

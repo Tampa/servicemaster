@@ -11,11 +11,11 @@
 #define KEY_SPACE 32
 
 #define D_ESCOFF_MS 300000LLU
-#define D_VERSION "1.7.2"
+#define D_VERSION "1.7.4"
 #define D_FUNCTIONS "F1:START F2:STOP F3:RESTART F4:ENABLE F5:DISABLE F6:MASK F7:UNMASK F8:RELOAD"
 #define D_SERVICE_TYPES "a:ALL d:DEV i:SLICE s:SERVICE o:SOCKET t:TARGET r:TIMER m:MOUNT c:SCOPE n:AMOUNT w:SWAP p:PATH h:SSHOT"
-#define D_HEADLINE "ServiceMaster " D_VERSION
-#define D_NAVIGATION_BASE "Left/Right:Modus|Up/Down:Select|Return:Status|PageUp/Down:Scroll|f:Search|Space:Sys/Usr|+,-:Theme=%s"
+#define D_HEADLINE ""
+#define D_NAVIGATION_BASE "Left/Right:Modus|Up/Down:Select|Return:Status|PageUp/Down:Scroll|f:Search|Space:Sys/Usr|Tab:Sort|+,-:Theme=%s"
 #define D_QUIT "q/ESC:Quit"
 
 extern int D_XLOAD;
@@ -66,5 +66,6 @@ void display_set_bus_type(enum bus_type);
 void display_status_window(const char *status, const char *title);
 void d_op(Bus *bus, Service *svc, enum operation mode, const char *txt);
 void set_color_scheme(int scheme);
+void reset_terminal_title(void);
 
 #endif

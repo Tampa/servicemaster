@@ -1,16 +1,28 @@
-#include <ctype.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <unistd.h>
 #include <ncurses.h>
+#include <signal.h>
+#include <sys/ioctl.h>
 #include <errno.h>
 #include <systemd/sd-event.h>
-#include <signal.h>
-#include "sm_err.h"
-#include "service.h"
+#include <systemd/sd-bus.h>
+#include <time.h>
+#include <ctype.h>
 #include "display.h"
-#include "lib/toml.h"
-#include <sys/ioctl.h>
+#include "service.h"
+#include "bus.h"
+#include "sm_err.h"
 #include "config.h"
 
+// External function to reset the terminal window title
+extern void reset_terminal_title(void);
+
 #define MAX(a, b) ((a) > (b) ? (a) : (b))
+
+// Function declarations
+static void sort_services_by_header(Bus *bus);
 
 extern char *colors[];
 
@@ -23,12 +35,151 @@ static uid_t euid = INT32_MAX;
 static sd_event *event = NULL;
 static sd_event_source *event_source = NULL;
 
+// Enum for header highlighting
+typedef enum
+{
+    BOLD_UNIT = 0,
+    BOLD_STATE,
+    BOLD_ACTIVE,
+    BOLD_SUB,
+    BOLD_DESCRIPTION,
+    BOLD_NONE
+} BoldHeader;
+
+static BoldHeader current_bold_header = BOLD_NONE;
+
+// Indicates whether a header should be highlighted on first tab press
+static bool header_highlighting_initialized = false;
+
+// Sort direction for different columns
+typedef enum
+{
+    SORT_ASCENDING,
+    SORT_DESCENDING
+} SortDirection;
+
+// Current sort status
+static SortDirection unit_sort_direction = SORT_ASCENDING;
+static SortDirection state_sort_direction = SORT_ASCENDING;
+static SortDirection active_sort_direction = SORT_ASCENDING;
+static SortDirection sub_sort_direction = SORT_ASCENDING;
+static SortDirection description_sort_direction = SORT_ASCENDING;
+
 int colorscheme = 0;
 
 int D_XLOAD = 84;
 int D_XACTIVE = 94;
 int D_XSUB = 104;
 int D_XDESCRIPTION = 114;
+
+// Sort order for STATE values
+static const char *state_order[] = {
+    "enabled",
+    "enabled-runtime",
+    "loaded",
+    "generated",
+    "transient",
+    "static",
+    "not-found",
+    "disabled",
+    "masked",
+    NULL // End marker
+};
+
+// Sort order for ACTIVE values
+static const char *active_order[] = {
+    "active",
+    "inactive",
+    NULL // End marker
+};
+
+// Sort order for SUB values
+static const char *sub_order[] = {
+    "exited",
+    "running",
+    "mounted",
+    "active",
+    "dead",
+    "waiting",
+    "plugged",
+    "listening",
+    NULL // End marker
+};
+
+// Helper function: Returns the index of a string in an array
+static int get_index_in_array(const char *value, const char **array)
+{
+    if (!value)
+        return -1;
+
+    for (int i = 0; array[i] != NULL; i++)
+    {
+        if (strcmp(value, array[i]) == 0)
+        {
+            return i;
+        }
+    }
+    return 999; // Not found, sort to the end
+}
+
+// Comparison function for unit names (alphabetical)
+static int compare_units(const void *a, const void *b)
+{
+    Service *svc1 = *(Service **)a;
+    Service *svc2 = *(Service **)b;
+
+    int result = strcmp(svc1->unit, svc2->unit);
+    return unit_sort_direction == SORT_ASCENDING ? result : -result;
+}
+
+// Comparison function for STATE
+static int compare_states(const void *a, const void *b)
+{
+    Service *svc1 = *(Service **)a;
+    Service *svc2 = *(Service **)b;
+
+    int idx1 = get_index_in_array(svc1->unit_file_state, state_order);
+    int idx2 = get_index_in_array(svc2->unit_file_state, state_order);
+
+    int result = idx1 - idx2;
+    return state_sort_direction == SORT_ASCENDING ? result : -result;
+}
+
+// Comparison function for ACTIVE
+static int compare_active(const void *a, const void *b)
+{
+    Service *svc1 = *(Service **)a;
+    Service *svc2 = *(Service **)b;
+
+    int idx1 = get_index_in_array(svc1->active, active_order);
+    int idx2 = get_index_in_array(svc2->active, active_order);
+
+    int result = idx1 - idx2;
+    return active_sort_direction == SORT_ASCENDING ? result : -result;
+}
+
+// Comparison function for SUB
+static int compare_sub(const void *a, const void *b)
+{
+    Service *svc1 = *(Service **)a;
+    Service *svc2 = *(Service **)b;
+
+    int idx1 = get_index_in_array(svc1->sub, sub_order);
+    int idx2 = get_index_in_array(svc2->sub, sub_order);
+
+    int result = idx1 - idx2;
+    return sub_sort_direction == SORT_ASCENDING ? result : -result;
+}
+
+// Comparison function for DESCRIPTION
+static int compare_descriptions(const void *a, const void *b)
+{
+    Service *svc1 = *(Service **)a;
+    Service *svc2 = *(Service **)b;
+
+    int result = strcmp(svc1->description, svc2->description);
+    return description_sort_direction == SORT_ASCENDING ? result : -result;
+}
 
 /**
  * Calculates column widths for display based on terminal width.
@@ -359,7 +510,18 @@ static void display_text_and_lines(Bus *bus)
     // Solarized light theme needs a different color pair
     !strcmp(color_schemes[colorscheme].name, "Solarized Light") ? attron(COLOR_PAIR(MAGENTA_BLACK)) : attron(COLOR_PAIR(BLACK_WHITE));
     mvprintw(headerrow, D_XLOAD - 10, "Pos.:%3d", position + index_start);
-    mvprintw(headerrow, 1, "UNIT:");
+
+    // UNIT Header
+    if (current_bold_header == BOLD_UNIT)
+    {
+        attron(COLOR_PAIR(WHITE_BLUE) | A_REVERSE | A_BOLD);
+        mvprintw(headerrow, 1, "UNIT:");
+        attroff(COLOR_PAIR(WHITE_BLUE) | A_REVERSE | A_BOLD);
+    }
+    else
+    {
+        mvprintw(headerrow, 1, "UNIT:");
+    }
 
     attron(COLOR_PAIR(GREEN_BLACK));
     mvprintw(headerrow, 7, "(%s)", type ? "USER" : "SYSTEM");
@@ -367,10 +529,54 @@ static void display_text_and_lines(Bus *bus)
 
     // Solarized light theme needs a different color pair
     !strcmp(color_schemes[colorscheme].name, "Solarized Light") ? attron(COLOR_PAIR(MAGENTA_BLACK)) : attron(COLOR_PAIR(BLACK_WHITE));
-    mvprintw(headerrow, D_XLOAD, "STATE:");
-    mvprintw(headerrow, D_XACTIVE, "ACTIVE:");
-    mvprintw(headerrow, D_XSUB, "SUB:");
-    mvprintw(headerrow, D_XDESCRIPTION, "DESCRIPTION:");
+
+    // STATE Header
+    if (current_bold_header == BOLD_STATE)
+    {
+        attron(COLOR_PAIR(WHITE_BLUE) | A_REVERSE | A_BOLD);
+        mvprintw(headerrow, D_XLOAD, "STATE:");
+        attroff(COLOR_PAIR(WHITE_BLUE) | A_REVERSE | A_BOLD);
+    }
+    else
+    {
+        mvprintw(headerrow, D_XLOAD, "STATE:");
+    }
+
+    // ACTIVE Header
+    if (current_bold_header == BOLD_ACTIVE)
+    {
+        attron(COLOR_PAIR(WHITE_BLUE) | A_REVERSE | A_BOLD);
+        mvprintw(headerrow, D_XACTIVE, "ACTIVE:");
+        attroff(COLOR_PAIR(WHITE_BLUE) | A_REVERSE | A_BOLD);
+    }
+    else
+    {
+        mvprintw(headerrow, D_XACTIVE, "ACTIVE:");
+    }
+
+    // SUB Header
+    if (current_bold_header == BOLD_SUB)
+    {
+        attron(COLOR_PAIR(WHITE_BLUE) | A_REVERSE | A_BOLD);
+        mvprintw(headerrow, D_XSUB, "SUB:");
+        attroff(COLOR_PAIR(WHITE_BLUE) | A_REVERSE | A_BOLD);
+    }
+    else
+    {
+        mvprintw(headerrow, D_XSUB, "SUB:");
+    }
+
+    // DESCRIPTION Header
+    if (current_bold_header == BOLD_DESCRIPTION)
+    {
+        attron(COLOR_PAIR(WHITE_BLUE) | A_REVERSE | A_BOLD);
+        mvprintw(headerrow, D_XDESCRIPTION, "DESCRIPTION:");
+        attroff(COLOR_PAIR(WHITE_BLUE) | A_REVERSE | A_BOLD);
+    }
+    else
+    {
+        mvprintw(headerrow, D_XDESCRIPTION, "DESCRIPTION:");
+    }
 
     attron(COLOR_PAIR(GREEN_BLACK));
     attron(A_UNDERLINE);
@@ -609,6 +815,17 @@ int display_key_pressed(sd_event_source *s, int fd, uint32_t revents, void *data
         return 0;
     }
     case KEY_ESC:
+        // If a header is highlighted, remove highlighting without sorting
+        if (current_bold_header != BOLD_NONE)
+        {
+            current_bold_header = BOLD_NONE;
+            header_highlighting_initialized = false;
+            clear();
+            display_redraw(bus);
+            refresh();
+            break;
+        }
+
         nodelay(stdscr, TRUE); // Non-blocking mode
         int esc_timeout = 50;  // 50ms Timeout for Escape sequences
         wtimeout(stdscr, esc_timeout);
@@ -648,6 +865,7 @@ int display_key_pressed(sd_event_source *s, int fd, uint32_t revents, void *data
             // Exit if ESC was pressed and enough time has passed since start
             if ((service_now() - start_time) < D_ESCOFF_MS)
                 break;
+            reset_terminal_title();
             endwin();
             exit(EXIT_SUCCESS);
         }
@@ -763,6 +981,17 @@ int display_key_pressed(sd_event_source *s, int fd, uint32_t revents, void *data
         break;
 
     case KEY_RETURN:
+        // If a header is highlighted, perform the corresponding sort
+        if (current_bold_header != BOLD_NONE)
+        {
+            sort_services_by_header(bus);
+            clear();
+            display_redraw(bus);
+            refresh();
+            break;
+        }
+
+        // Otherwise use original functionality (show status)
         svc = service_nth(bus, position + index_start);
         if (!svc)
             break;
@@ -822,6 +1051,25 @@ int display_key_pressed(sd_event_source *s, int fd, uint32_t revents, void *data
 
     case 'h':
         D_MODE(SNAPSHOT);
+        break;
+
+    case '\t': // Tab key
+        if (!header_highlighting_initialized)
+        {
+            current_bold_header = BOLD_UNIT;
+            header_highlighting_initialized = true;
+        }
+        else if (current_bold_header == BOLD_DESCRIPTION)
+        {
+            current_bold_header = BOLD_UNIT;
+        }
+        else
+        {
+            current_bold_header++;
+        }
+        clear();
+        display_redraw(bus);
+        refresh();
         break;
 
     case 'q':
@@ -972,17 +1220,14 @@ void display_redraw(Bus *bus)
  */
 void display_redraw_row(Service *svc)
 {
-    // If the service is on the screen, invalidate the row so it refreshes
-    // correctly
-    int x, y;
-
     if (svc->ypos < 0)
         return;
 
-    getyx(stdscr, y, x);
+    int curx, cury;
+    getyx(stdscr, cury, curx);
     wmove(stdscr, svc->ypos, D_XLOAD);
     wclrtoeol(stdscr);
-    wmove(stdscr, y, x);
+    wmove(stdscr, cury, curx);
 }
 
 void display_erase(void)
@@ -1004,6 +1249,50 @@ void display_set_bus_type(enum bus_type ty)
 }
 
 /**
+ * Sets the title of the terminal window.
+ *
+ * This function uses various ANSI escape sequences to change the title of
+ * the terminal window in different terminal emulators.
+ *
+ * @param title The new title for the terminal window
+ */
+static void set_terminal_title(const char *title)
+{
+    // XTerm, GNOME Terminal, Konsole, iTerm, etc.
+    printf("\033]0;%s\007", title);
+
+    // Screen and tmux
+    printf("\033k%s\033\\", title);
+
+    // Kitty Terminal
+    printf("\033]2;%s\007", title);
+
+    // Flush stdout to ensure the sequences are sent immediately
+    fflush(stdout);
+}
+
+/**
+ * Resets the title of the terminal window.
+ *
+ * This function uses various ANSI escape sequences to reset the title of
+ * the terminal window to the default value.
+ */
+void reset_terminal_title(void)
+{
+    // XTerm, GNOME Terminal, Konsole, iTerm, etc.
+    printf("\033]0;\007");
+
+    // Screen and tmux
+    printf("\033k\033\\");
+
+    // Kitty Terminal
+    printf("\033]2;\007");
+
+    // Flush stdout to ensure the sequences are sent immediately
+    fflush(stdout);
+}
+
+/**
  * Signal handler for SIGWINCH (window change) events.
  *
  * This function is called when the terminal window is resized. It:
@@ -1022,10 +1311,10 @@ static void handle_winch(int sig)
     if (ioctl(STDOUT_FILENO, TIOCGWINSZ, &size) == -1)
     {
         display_status_window("Error getting window size", "Error");
-        return; // Exit if we can't get window size
+        return;
     }
 
-    // Add error checking for resizeterm
+    // Resize terminal and check for errors
     if (resizeterm(size.ws_row, size.ws_col) == ERR)
     {
         return;
@@ -1033,17 +1322,23 @@ static void handle_winch(int sig)
 
     calculate_columns(size.ws_col);
 
-    // Reset terminal properties safely
+    // Reset terminal properties
     keypad(stdscr, TRUE);
     nodelay(stdscr, TRUE);
-
     clear();
 
-    // Redraw with error checking
+    // Set the terminal window title again
+    char window_title[100];
+    snprintf(window_title, sizeof(window_title), "ServiceMaster v%s", D_VERSION);
+    set_terminal_title(window_title);
+
+    // Redraw current bus if available
     Bus *current_bus = bus_currently_displayed();
     if (current_bus)
-    {
         display_redraw(current_bus);
+    else
+    {
+        display_status_window("Error redrawing display", "Error");
     }
 
     refresh();
@@ -1137,6 +1432,11 @@ void display_init(void)
 
     apply_color_scheme(&color_schemes[colorscheme]);
     set_color_scheme(colorscheme);
+
+    // Set the terminal window title
+    char window_title[100];
+    snprintf(window_title, sizeof(window_title), "ServiceMaster v%s", D_VERSION);
+    set_terminal_title(window_title);
 
     clear();
     border(0, 0, 0, 0, 0, 0, 0, 0);
@@ -1315,5 +1615,65 @@ void d_op(Bus *bus, Service *svc, enum operation mode, const char *txt)
     if (!success)
     {
         display_status_window("Command could not be executed on this unit.", txt);
+    }
+}
+
+/**
+ * Sorts the services based on the currently highlighted header
+ * and the corresponding sort direction.
+ *
+ * @param bus The bus containing the services to be sorted
+ */
+static void sort_services_by_header(Bus *bus)
+{
+    if (!bus)
+        return;
+
+    // Select the right comparison function based on the highlighted header
+    int (*compare_func)(const void *, const void *) = NULL;
+
+    switch (current_bold_header)
+    {
+    case BOLD_UNIT:
+        compare_func = compare_units;
+        unit_sort_direction = (unit_sort_direction == SORT_ASCENDING) ? SORT_DESCENDING : SORT_ASCENDING;
+        break;
+
+    case BOLD_STATE:
+        compare_func = compare_states;
+        state_sort_direction = (state_sort_direction == SORT_ASCENDING) ? SORT_DESCENDING : SORT_ASCENDING;
+        break;
+
+    case BOLD_ACTIVE:
+        compare_func = compare_active;
+        active_sort_direction = (active_sort_direction == SORT_ASCENDING) ? SORT_DESCENDING : SORT_ASCENDING;
+        break;
+
+    case BOLD_SUB:
+        compare_func = compare_sub;
+        sub_sort_direction = (sub_sort_direction == SORT_ASCENDING) ? SORT_DESCENDING : SORT_ASCENDING;
+        break;
+
+    case BOLD_DESCRIPTION:
+        compare_func = compare_descriptions;
+        description_sort_direction = (description_sort_direction == SORT_ASCENDING) ? SORT_DESCENDING : SORT_ASCENDING;
+        break;
+
+    default:
+        return; // No sorting if no header is highlighted
+    }
+
+    if (compare_func)
+    {
+        // Sort the services
+        service_sort(bus, compare_func);
+
+        // Reset position
+        index_start = 0;
+        position = 0;
+
+        // Remove header highlighting
+        current_bold_header = BOLD_NONE;
+        header_highlighting_initialized = false;
     }
 }
