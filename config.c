@@ -1,5 +1,6 @@
 #include "config.h"
 #include <signal.h>
+#include <sys/stat.h>
 
 // External function to reset the terminal window title
 extern void reset_terminal_title(void);
@@ -75,27 +76,41 @@ void setup_signal_handlers()
 // Function to print a (TOML) file
 void print_file(const char *filename)
 {
-    FILE *fp = fopen(filename, "r");
+    FILE *fp = fopen(filename, "rb");
     if (!fp)
     {
         perror("Error opening file");
         return;
     }
-    size_t l;
-    fseek(fp, 0, SEEK_END);
-    l = ftell(fp);
-    fseek(fp, 0, SEEK_SET);
 
-    printf("\nFile: %s | %ldKB\n", filename, l / 1024);
+    struct stat st;
+    if (stat(filename, &st) == 0)
+    {
+        printf("\nFile: %s | %ldKB\n", filename, st.st_size / 1024);
+    }
+    else
+    {
+        printf("\nFile: %s | size unknown\n", filename);
+    }
+
+    fclose(fp);
+    fp = fopen(filename, "r");
+    if (!fp)
+    {
+        perror("Error reopening file");
+        return;
+    }
+
     printf("--------------------------------------------------\n\n");
 
     char *line = NULL;
-    while (getline(&line, &l, fp) != -1)
+    size_t len = 0;
+    while (getline(&line, &len, fp) != -1)
     {
         printf("%s", line);
     }
-    free(line);
 
+    free(line);
     fclose(fp);
 }
 
