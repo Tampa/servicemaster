@@ -122,63 +122,50 @@ static int get_index_in_array(const char *value, const char **array)
     return 999; // Not found, sort to the end
 }
 
-// Comparison function for unit names (alphabetical)
-static int compare_units(const void *a, const void *b)
+// Generic comparison function
+static int compare_services(const void *a, const void *b)
 {
     Service *svc1 = *(Service **)a;
     Service *svc2 = *(Service **)b;
+    int result = 0;
 
-    int result = strcmp(svc1->unit, svc2->unit);
-    return unit_sort_direction == SORT_ASCENDING ? result : -result;
-}
+    switch (current_bold_header)
+    {
+    case BOLD_UNIT:
+        result = strcmp(svc1->unit, svc2->unit);
+        return unit_sort_direction == SORT_ASCENDING ? result : -result;
 
-// Comparison function for STATE
-static int compare_states(const void *a, const void *b)
-{
-    Service *svc1 = *(Service **)a;
-    Service *svc2 = *(Service **)b;
+    case BOLD_STATE:
+    {
+        int idx1 = get_index_in_array(svc1->unit_file_state, state_order);
+        int idx2 = get_index_in_array(svc2->unit_file_state, state_order);
+        result = idx1 - idx2;
+        return state_sort_direction == SORT_ASCENDING ? result : -result;
+    }
 
-    int idx1 = get_index_in_array(svc1->unit_file_state, state_order);
-    int idx2 = get_index_in_array(svc2->unit_file_state, state_order);
+    case BOLD_ACTIVE:
+    {
+        int idx1 = get_index_in_array(svc1->active, active_order);
+        int idx2 = get_index_in_array(svc2->active, active_order);
+        result = idx1 - idx2;
+        return active_sort_direction == SORT_ASCENDING ? result : -result;
+    }
 
-    int result = idx1 - idx2;
-    return state_sort_direction == SORT_ASCENDING ? result : -result;
-}
+    case BOLD_SUB:
+    {
+        int idx1 = get_index_in_array(svc1->sub, sub_order);
+        int idx2 = get_index_in_array(svc2->sub, sub_order);
+        result = idx1 - idx2;
+        return sub_sort_direction == SORT_ASCENDING ? result : -result;
+    }
 
-// Comparison function for ACTIVE
-static int compare_active(const void *a, const void *b)
-{
-    Service *svc1 = *(Service **)a;
-    Service *svc2 = *(Service **)b;
+    case BOLD_DESCRIPTION:
+        result = strcmp(svc1->description, svc2->description);
+        return description_sort_direction == SORT_ASCENDING ? result : -result;
 
-    int idx1 = get_index_in_array(svc1->active, active_order);
-    int idx2 = get_index_in_array(svc2->active, active_order);
-
-    int result = idx1 - idx2;
-    return active_sort_direction == SORT_ASCENDING ? result : -result;
-}
-
-// Comparison function for SUB
-static int compare_sub(const void *a, const void *b)
-{
-    Service *svc1 = *(Service **)a;
-    Service *svc2 = *(Service **)b;
-
-    int idx1 = get_index_in_array(svc1->sub, sub_order);
-    int idx2 = get_index_in_array(svc2->sub, sub_order);
-
-    int result = idx1 - idx2;
-    return sub_sort_direction == SORT_ASCENDING ? result : -result;
-}
-
-// Comparison function for DESCRIPTION
-static int compare_descriptions(const void *a, const void *b)
-{
-    Service *svc1 = *(Service **)a;
-    Service *svc2 = *(Service **)b;
-
-    int result = strcmp(svc1->description, svc2->description);
-    return description_sort_direction == SORT_ASCENDING ? result : -result;
+    default:
+        return 0; // No sorting if no header is highlighted
+    }
 }
 
 /**
@@ -1629,33 +1616,26 @@ static void sort_services_by_header(Bus *bus)
     if (!bus)
         return;
 
-    // Select the right comparison function based on the highlighted header
-    int (*compare_func)(const void *, const void *) = NULL;
-
+    // Toggle the sort direction for the current header
     switch (current_bold_header)
     {
     case BOLD_UNIT:
-        compare_func = compare_units;
         unit_sort_direction = (unit_sort_direction == SORT_ASCENDING) ? SORT_DESCENDING : SORT_ASCENDING;
         break;
 
     case BOLD_STATE:
-        compare_func = compare_states;
         state_sort_direction = (state_sort_direction == SORT_ASCENDING) ? SORT_DESCENDING : SORT_ASCENDING;
         break;
 
     case BOLD_ACTIVE:
-        compare_func = compare_active;
         active_sort_direction = (active_sort_direction == SORT_ASCENDING) ? SORT_DESCENDING : SORT_ASCENDING;
         break;
 
     case BOLD_SUB:
-        compare_func = compare_sub;
         sub_sort_direction = (sub_sort_direction == SORT_ASCENDING) ? SORT_DESCENDING : SORT_ASCENDING;
         break;
 
     case BOLD_DESCRIPTION:
-        compare_func = compare_descriptions;
         description_sort_direction = (description_sort_direction == SORT_ASCENDING) ? SORT_DESCENDING : SORT_ASCENDING;
         break;
 
@@ -1663,17 +1643,14 @@ static void sort_services_by_header(Bus *bus)
         return; // No sorting if no header is highlighted
     }
 
-    if (compare_func)
-    {
-        // Sort the services
-        service_sort(bus, compare_func);
+    // Sort the services
+    service_sort(bus, compare_services);
 
-        // Reset position
-        index_start = 0;
-        position = 0;
+    // Reset position
+    index_start = 0;
+    position = 0;
 
-        // Remove header highlighting
-        current_bold_header = BOLD_NONE;
-        header_highlighting_initialized = false;
-    }
+    // Remove header highlighting
+    current_bold_header = BOLD_NONE;
+    header_highlighting_initialized = false;
 }
