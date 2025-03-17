@@ -945,11 +945,39 @@ int display_key_pressed(sd_event_source *s, int fd, uint32_t revents, void *data
         break;
 
     case KEY_LEFT:
+        // Navigation between columns when a header is highlighted
+        if (current_bold_header != BOLD_NONE)
+        {
+            if (current_bold_header > BOLD_UNIT)
+            {
+                current_bold_header--;
+                clear();
+                display_redraw(bus);
+                refresh();
+            }
+            break;
+        }
+
+        // Original functionality for service type navigation
         if (mode > ALL)
             D_MODE(mode - 1);
         break;
 
     case KEY_RIGHT:
+        // Navigation between columns when a header is highlighted
+        if (current_bold_header != BOLD_NONE)
+        {
+            if (current_bold_header < BOLD_DESCRIPTION)
+            {
+                current_bold_header++;
+                clear();
+                display_redraw(bus);
+                refresh();
+            }
+            break;
+        }
+
+        // Original functionality for service type navigation
         if (mode < SNAPSHOT)
             D_MODE(mode + 1);
         break;
