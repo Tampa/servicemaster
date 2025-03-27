@@ -1,4 +1,4 @@
-# ServiceMaster 1.7.4
+# ServiceMaster 1.7.5
 
 ServiceMaster is a powerful terminal-based tool for managing Systemd units on Linux systems. It provides an intuitive interface for viewing and controlling system and user units, making it easier to manage your units without leaving the command line.
 
@@ -26,7 +26,7 @@ ServiceMaster is a powerful terminal-based tool for managing Systemd units on Li
 
 After launching ServiceMaster, you can use the following controls:
 
-- Arrow keys, page up/down: Navigate through the list of units
+- Arrow keys (hljk), page up/down: Navigate through the list of units
 - Space: Toggle between system and user units
 - Enter: Show detailed status of the selected unit
 - F1-F8: Perform actions (start, stop, restart, etc.) on the selected unit
@@ -63,7 +63,7 @@ Lennart Martens
 
 ## Version
 
-1.7.4 (2025)
+1.7.5 (2025)
 
 ## Building & Install
 

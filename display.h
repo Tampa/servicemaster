@@ -9,11 +9,15 @@
 #define KEY_RETURN 10
 #define KEY_ESC 27
 #define KEY_SPACE 32
+#define KEY_VI_L 104
+#define KEY_VI_R 108
+#define KEY_VI_U 107
+#define KEY_VI_D 106
 
 #define D_ESCOFF_MS 300000LLU
-#define D_VERSION "1.7.4"
+#define D_VERSION "1.7.5"
 #define D_FUNCTIONS "F1:START F2:STOP F3:RESTART F4:ENABLE F5:DISABLE F6:MASK F7:UNMASK F8:RELOAD"
-#define D_SERVICE_TYPES "a:ALL d:DEV i:SLICE s:SERVICE o:SOCKET t:TARGET r:TIMER m:MOUNT c:SCOPE n:AMOUNT w:SWAP p:PATH h:SSHOT"
+#define D_SERVICE_TYPES "a:ALL d:DEV i:SLICE s:SERVICE o:SOCKET t:TARGET r:TIMER m:MOUNT c:SCOPE n:AMOUNT w:SWAP p:PATH H:SSHOT"
 #define D_HEADLINE ""
 #define D_NAVIGATION_BASE "Left/Right:Modus|Up/Down:Select|Return:Status|PageUp/Down:Scroll|f:Search|Space:Sys/Usr|Tab:Sort|+,-:Theme=%s"
 #define D_QUIT "q/ESC:Quit"
