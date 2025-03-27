@@ -887,6 +887,7 @@ int display_key_pressed(sd_event_source *s, int fd, uint32_t revents, void *data
         d_op(bus, svc, RELOAD, "Reload");
         break;
     case KEY_UP:
+    case KEY_VI_U:
         if (position > 0)
         {
             // If position > 0, just move the cursor up
@@ -900,6 +901,7 @@ int display_key_pressed(sd_event_source *s, int fd, uint32_t revents, void *data
         break;
 
     case KEY_DOWN:
+    case KEY_VI_D:
         if (position + index_start >= max_services - 1)
         {
             // Already at the last entry, prevent further scrolling
@@ -945,6 +947,7 @@ int display_key_pressed(sd_event_source *s, int fd, uint32_t revents, void *data
         break;
 
     case KEY_LEFT:
+    case KEY_VI_L:
         // Navigation between columns when a header is highlighted
         if (current_bold_header != BOLD_NONE)
         {
@@ -964,6 +967,7 @@ int display_key_pressed(sd_event_source *s, int fd, uint32_t revents, void *data
         break;
 
     case KEY_RIGHT:
+    case KEY_VI_R:
         // Navigation between columns when a header is highlighted
         if (current_bold_header != BOLD_NONE)
         {
@@ -1064,7 +1068,7 @@ int display_key_pressed(sd_event_source *s, int fd, uint32_t revents, void *data
         D_MODE(PATH);
         break;
 
-    case 'h':
+    case 'H':
         D_MODE(SNAPSHOT);
         break;
 
