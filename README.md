@@ -1,20 +1,4 @@
-# ServiceMaster 1.7.5
-
-ServiceMaster is a powerful terminal-based tool for managing Systemd units on Linux systems. It provides an intuitive interface for viewing and controlling system and user units, making it easier to manage your units without leaving the command line.
-
-## Features
-
-- View all Systemd units or filter by type (services, devices, sockets, etc.)
-- Start, stop, restart, enable, disable, mask, and unmask units
-- View detailed status information for each unit
-- Switch between system and user units
-- User-friendly ncurses interface with color-coded information
-- Keyboard shortcuts for quick navigation and control
-- DBus event loop: Reacts immediately to external changes to units
-- Switch between colorschemes, edit or add colorschemes
-- Easy configuration with TOML file
-- Search for units by name
-- Sort units by different columns (unit name, state, active, sub, description)
+![ServiceMaster](SM_AD.png)
 
 ## Requirements
 
