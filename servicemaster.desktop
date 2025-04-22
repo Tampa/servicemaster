@@ -1,0 +1,13 @@
+[Desktop Entry]
+Type=Application
+Version=1.7.6
+Name=ServiceMaster
+GenericName=Systemd Manager
+Comment=Manage Systemd services
+#copy the provided icon to /usr/share/icons/hicolor/128x128/apps/
+Icon=servicemaster_icon
+#insert your preferred terminal emulator, I use "kitty":
+Exec=kitty -e servicemaster -w # option "w" to start without welcome message
+Terminal=false
+Categories=System
+Keywords=system;services;systemd
