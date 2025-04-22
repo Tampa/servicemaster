@@ -607,10 +607,6 @@ int display_key_pressed(sd_event_source *s, int fd, uint32_t revents, void *data
     int maxy;
     int maxx;
 
-    // Mouse reset
-    printf("\033[?1003l");
-    mousemask(0, NULL);
-
     getmaxyx(stdscr, maxy, maxx);
 
     int headerrow = 3;
@@ -1440,7 +1436,8 @@ void display_init(void)
     nodelay(stdscr, TRUE);
     set_escdelay(0);
 
-    mousemask(ALL_MOUSE_EVENTS | REPORT_MOUSE_POSITION, NULL);
+    // Only report mouse position, ignore clicks to prevent paste issues
+    mousemask(REPORT_MOUSE_POSITION, NULL);
     printf("\033[?1003h\n"); // Extended mouse events enabled
 
     struct winsize size;
